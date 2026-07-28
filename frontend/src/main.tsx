@@ -1,0 +1,19 @@
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+import { SessionProvider } from "./contexts/SessionContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { WebSocketProvider } from "./contexts/WebSocketContext";
+import "./index.css";
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+  <React.StrictMode>
+    <ThemeProvider>
+      <SessionProvider>
+        <WebSocketProvider>
+          <App />
+        </WebSocketProvider>
+      </SessionProvider>
+    </ThemeProvider>
+  </React.StrictMode>
+);

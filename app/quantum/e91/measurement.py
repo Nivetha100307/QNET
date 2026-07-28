@@ -10,7 +10,10 @@ from dataclasses import dataclass
 import math
 from typing import List, Sequence
 
-from qiskit import QuantumCircuit
+try:
+    from qiskit import QuantumCircuit
+except Exception:
+    QuantumCircuit = None  # type: ignore
 
 from app.domain.interfaces.quantum_backend import IQuantumBackend
 from app.quantum.e91.basis_selector import MeasurementPair, MeasurementSetting
@@ -68,9 +71,10 @@ class MeasurementEngine:
             bell_circuit: 2-qubit QuantumCircuit preparing an EPR Bell pair (e.g. |Φ+⟩).
             pair: MeasurementPair containing Alice and Bob measurement settings.
 
-        Returns:
-            QuantumCircuit: A 2-qubit, 2-classical-bit circuit ready for execution.
         """
+        if QuantumCircuit is None or not hasattr(bell_circuit, "num_qubits"):
+            return {"bell_circuit": bell_circuit, "pair": pair}
+
         if bell_circuit.num_qubits < 2:
             raise ValueError(
                 f"bell_circuit must have at least 2 qubits, got {bell_circuit.num_qubits}."

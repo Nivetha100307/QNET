@@ -2,11 +2,11 @@
 
 import logging
 from typing import Any, Dict, Optional
-from qiskit import transpile as qiskit_transpile
-
 try:
+    from qiskit import transpile as qiskit_transpile
     from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2 as Sampler
-except ImportError:
+except Exception:
+    qiskit_transpile = None  # type: ignore
     QiskitRuntimeService = None  # type: ignore
     Sampler = None  # type: ignore
 
@@ -94,12 +94,17 @@ class IBMQuantumBackend(IQuantumBackend):
 
     def transpile(self, circuit: Any) -> Any:
         """Transpile circuit to target hardware coupling map and gate set."""
-        if self._hardware_backend is not None:
+        if qiskit_transpile is not None:
+            if self._hardware_backend is not None:
+                try:
+                    return qiskit_transpile(circuit, self._hardware_backend)
+                except Exception:
+                    pass
             try:
-                return qiskit_transpile(circuit, self._hardware_backend)
+                return qiskit_transpile(circuit)
             except Exception:
                 pass
-        return qiskit_transpile(circuit)
+        return circuit
 
     def backend_name(self) -> str:
         """Return target IBM physical backend name."""

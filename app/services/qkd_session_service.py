@@ -41,29 +41,13 @@ class QKDSessionService:
         self._event_publisher = event_publisher
 
     def start_session(
-        self, num_bits: int = 128, session_id: Optional[str] = None
+        self,
+        num_bits: int = 128,
+        session_id: Optional[str] = None,
+        enable_eve: bool = False,
+        channel_noise: float = 0.0,
+        backend_name: str = "aer_simulator",
     ) -> QKDResult:
-        """Start and execute a QKD session end-to-end.
-
-        Workflow:
-            1. Generate or validate unique session ID.
-            2. Publish 'session started' event (if publisher exists).
-            3. Invoke protocol.run(num_bits).
-            4. Convert outcome to domain QKDResult.
-            5. Persist result in repository (if repository exists).
-            6. Publish completed/failed events (if publisher exists).
-            7. Return domain QKDResult.
-
-        Args:
-            num_bits: Number of target key bits to request (default: 128).
-            session_id: Optional custom session ID string.
-
-        Returns:
-            QKDResult: Domain entity representing the session outcome.
-
-        Raises:
-            ValueError: If num_bits < 1.
-        """
         if num_bits < 1:
             raise ValueError(f"num_bits must be at least 1, got {num_bits}.")
 
@@ -80,7 +64,19 @@ class QKDSessionService:
 
         # 2. Invoke IQKDProtocol.run()
         try:
-            protocol_outcome = self._protocol.run(num_bits=num_bits)
+            if hasattr(self._protocol, "run"):
+                import inspect
+                sig = inspect.signature(self._protocol.run)
+                if "enable_eve" in sig.parameters:
+                    protocol_outcome = self._protocol.run(
+                        num_bits=num_bits,
+                        enable_eve=enable_eve,
+                        channel_noise=channel_noise,
+                    )
+                else:
+                    protocol_outcome = self._protocol.run(num_bits=num_bits)
+            else:
+                protocol_outcome = self._protocol.run(num_bits=num_bits)
 
             # Convert protocol_outcome to QKDResult
             if hasattr(protocol_outcome, "to_qkd_result"):

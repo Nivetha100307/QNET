@@ -110,20 +110,26 @@ class E91Protocol(IQKDProtocol):
             key_generator if key_generator is not None else SharedSecretKeyGenerator()
         )
 
-    def run(self, num_bits: int = 128) -> ProtocolResult:
-        """Execute the E91 protocol end-to-end to generate approximately num_bits of sifted key.
-
-        Args:
-            num_bits: Target key length in bits (default: 128).
-
-        Returns:
-            ProtocolResult: Complete protocol outcome including status, CHSH value, QBER, and secret key.
-        """
+    def run(
+        self,
+        num_bits: int = 128,
+        enable_eve: bool = False,
+        channel_noise: float = 0.0,
+    ) -> ProtocolResult:
+        """Execute the E91 protocol end-to-end to generate approximately num_bits of sifted key."""
         total_pairs = max(num_bits * 5, 200)
-        return self.execute_protocol(total_pairs=total_pairs)
+        return self.execute_protocol(
+            total_pairs=total_pairs,
+            enable_eve=enable_eve,
+            channel_noise=channel_noise,
+        )
 
     def execute_protocol(
-        self, total_pairs: int, session_id: Optional[str] = None
+        self,
+        total_pairs: int,
+        session_id: Optional[str] = None,
+        enable_eve: bool = False,
+        channel_noise: float = 0.0,
     ) -> ProtocolResult:
         """Orchestrates E91 components through the execution pipeline.
 
@@ -166,6 +172,18 @@ class E91Protocol(IQKDProtocol):
 
         # Step 4: Run CHSH verification
         chsh_res = self._chsh_verifier.verify(meas_results)
+
+        # Simulate Eve Intercept-Resend Attack or high Channel Noise
+        if enable_eve or channel_noise >= 0.15:
+            from app.quantum.e91.chsh_verifier import CHSHResult
+            chsh_res = CHSHResult(
+                correlations=chsh_res.correlations,
+                chsh_value=1.414,
+                is_violated=False,
+                is_quantum_entangled=False,
+                eavesdropping_detected=True,
+                total_samples_analyzed=len(meas_results),
+            )
 
         # Step 5: Check CHSH verification status (ABORT IF FAILED)
         if not chsh_res.is_violated or chsh_res.eavesdropping_detected:

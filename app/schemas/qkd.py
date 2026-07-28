@@ -14,6 +14,20 @@ class QKDSessionRequest(BaseModel):
         description="Target sifted key length in bits (must be between 1 and 8192)",
         examples=[128],
     )
+    enable_eve: bool = Field(
+        default=False,
+        description="Enable Eve eavesdropper intercept-resend attack on quantum channel",
+    )
+    channel_noise: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Channel decoherence noise ratio (0.0 to 1.0)",
+    )
+    backend_name: str = Field(
+        default="aer_simulator",
+        description="Target quantum execution backend",
+    )
 
 
 class QKDSessionResponse(BaseModel):

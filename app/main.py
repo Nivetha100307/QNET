@@ -43,6 +43,11 @@ def create_app() -> FastAPI:
 
     app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
+    @app.on_event("startup")
+    def startup_db():
+        from app.infrastructure.persistence.database.database import init_db
+        init_db()
+
     @app.exception_handler(EntangleNetError)
     async def entanglenet_exception_handler(request: Request, exc: EntangleNetError):
         logger.error("Handled application error: %s", exc)
@@ -51,11 +56,22 @@ def create_app() -> FastAPI:
             content={"error": exc.__class__.__name__, "detail": str(exc)},
         )
 
+    import os
+    from fastapi.staticfiles import StaticFiles
+
+    frontend_dist_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
+    frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+    if os.path.exists(frontend_dist_dir):
+        app.mount("/dashboard", StaticFiles(directory=frontend_dist_dir, html=True), name="frontend")
+    elif os.path.exists(frontend_dir):
+        app.mount("/dashboard", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+
     @app.get("/", tags=["root"])
     async def root() -> dict:
         return {
             "message": f"{settings.APP_NAME} backend is running.",
             "docs": "/docs",
+            "dashboard": "/dashboard",
             "api_prefix": settings.API_V1_PREFIX,
         }
 

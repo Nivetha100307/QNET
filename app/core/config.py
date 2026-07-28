@@ -32,7 +32,12 @@ class Settings(BaseSettings):
     DEFAULT_SHOTS: int = 1024
     SIMULATION_SEED: int | None = None  # set an int for reproducible runs
 
-    # --- Database (wired later) ---
+    # --- Database & Supabase ---
+    SUPABASE_URL: str | None = None
+    SUPABASE_SECRET_KEY: str | None = None
+    SUPABASE_PUBLISHABLE_KEY: str | None = None
+    DATABASE_URL: str | None = Field(default="sqlite+aiosqlite:///./entanglenet.db")
+    REPOSITORY_TYPE: str = Field(default="postgres")
     POSTGRES_DSN: str | None = None
 
     # --- Cache / pubsub (wired later) ---

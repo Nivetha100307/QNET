@@ -14,11 +14,7 @@ from app.services.qkd_session_service import QKDSessionService
 router = APIRouter(prefix="/qkd/sessions", tags=["qkd_sessions"])
 
 
-@lru_cache
-def get_qkd_session_service() -> QKDSessionService:
-    """Dependency provider for QKDSessionService with injected E91Protocol."""
-    protocol = E91Protocol()
-    return QKDSessionService(protocol=protocol)
+from app.dependencies import get_qkd_session_service
 
 
 def map_to_session_response(domain_res: QKDResult) -> QKDSessionResponse:
@@ -62,7 +58,12 @@ async def create_qkd_session(
 ) -> QKDSessionResponse:
     """POST /api/v1/qkd/sessions - Initiate a new QKD session."""
     try:
-        domain_res = service.start_session(num_bits=request.num_bits)
+        domain_res = service.start_session(
+            num_bits=request.num_bits,
+            enable_eve=request.enable_eve,
+            channel_noise=request.channel_noise,
+            backend_name=request.backend_name,
+        )
         return map_to_session_response(domain_res)
     except ValueError as exc:
         raise HTTPException(

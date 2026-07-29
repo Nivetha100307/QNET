@@ -27,6 +27,7 @@ import {
 } from '../services/api';
 import { QuantumEngineModule } from './QuantumEngineModule';
 import { QuantumKeyModule } from './QuantumKeyModule';
+import { QuantumSecurityDashboard } from './QuantumSecurityDashboard';
 
 const NODES = [
   'Control_Center',
@@ -37,7 +38,7 @@ const NODES = [
 ];
 
 export const QuantumSessionManager: React.FC = () => {
-  const [activeModuleTab, setActiveModuleTab] = useState<'module1' | 'module2' | 'module3'>('module1');
+  const [activeModuleTab, setActiveModuleTab] = useState<'module1' | 'module2' | 'module3' | 'module4'>('module1');
 
   const [sourceNode, setSourceNode] = useState<string>('Control_Center');
   const [destNode, setDestNode] = useState<string>('Substation_A');
@@ -217,7 +218,7 @@ export const QuantumSessionManager: React.FC = () => {
               <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
                 QNetSecure Framework
                 <span className="text-xs px-2.5 py-0.5 rounded-full bg-quantum-cyan/20 text-quantum-cyan font-mono border border-quantum-cyan/40">
-                  {activeModuleTab === 'module1' ? 'Module 1 Active' : activeModuleTab === 'module2' ? 'Module 2 Active' : 'Module 3 Active'}
+                  {activeModuleTab === 'module1' ? 'Module 1 Active' : activeModuleTab === 'module2' ? 'Module 2 Active' : activeModuleTab === 'module3' ? 'Module 3 Active' : 'Module 4 Active'}
                 </span>
               </h1>
               <p className="text-sm text-slate-400">
@@ -280,6 +281,18 @@ export const QuantumSessionManager: React.FC = () => {
         >
           <Key className="w-4 h-4" />
           <span>Module 3: Quantum Key Management</span>
+        </button>
+
+        <button
+          onClick={() => setActiveModuleTab('module4')}
+          className={`flex items-center space-x-2.5 px-5 py-3 font-semibold text-sm rounded-t-xl transition-all border-b-2 ${
+            activeModuleTab === 'module4'
+              ? 'border-emerald-400 text-emerald-300 bg-slate-900/80 border-t border-x border-slate-800'
+              : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <span>Module 4: Quantum Security Monitor</span>
         </button>
       </div>
 
@@ -649,6 +662,34 @@ export const QuantumSessionManager: React.FC = () => {
               <button
                 onClick={handleQuickCreateSession}
                 className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-sm rounded-xl shadow-lg transition"
+              >
+                Create Active Quantum Session
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Module 4 Tab View */}
+      {activeModuleTab === 'module4' && (
+        <div>
+          {activeSession ? (
+            <QuantumSecurityDashboard
+              session={activeSession}
+              sessionHistory={sessionHistory}
+              onSelectSession={(selected) => setActiveSession(selected)}
+              onQuickCreateSession={handleQuickCreateSession}
+            />
+          ) : (
+            <div className="glass-panel p-12 rounded-2xl border border-slate-800 text-center space-y-4">
+              <ShieldCheck className="w-12 h-12 text-slate-600 mx-auto animate-pulse" />
+              <h3 className="text-lg font-medium text-slate-300">Please Select or Initialize a Session</h3>
+              <p className="text-sm text-slate-500 max-w-md mx-auto mb-4">
+                Module 4 Quantum Security Monitor requires an active session with completed key sifting. Click below to create a fresh active session.
+              </p>
+              <button
+                onClick={handleQuickCreateSession}
+                className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-sm rounded-xl shadow-lg transition"
               >
                 Create Active Quantum Session
               </button>

@@ -1,0 +1,88 @@
+@import 'ag-grid-community/styles/ag-grid.css';
+@import 'ag-grid-community/styles/ag-theme-alpine.css';
+@import '@xyflow/react/dist/style.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-100 font-poppins antialiased overflow-x-hidden;
+  }
+
+  /* Scrollbar styles */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-slate-900;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-700 rounded hover:bg-teal-500 transition-colors;
+  }
+}
+
+/* Light mode overrides */
+html:not(.dark) body {
+  @apply bg-slate-50 text-slate-900;
+}
+
+html:not(.dark) .bg-slate-950 {
+  @apply bg-slate-100;
+}
+html:not(.dark) .bg-slate-900 {
+  @apply bg-white border-slate-200 shadow-sm;
+}
+html:not(.dark) .bg-slate-800 {
+  @apply bg-slate-100 border-slate-300;
+}
+html:not(.dark) .border-slate-800 {
+  @apply border-slate-200;
+}
+html:not(.dark) .text-slate-400 {
+  @apply text-slate-600;
+}
+
+/* Industrial Card Glows */
+.panel-glow-teal {
+  box-shadow: 0 0 15px -3px rgba(20, 184, 166, 0.15);
+}
+.panel-glow-red {
+  box-shadow: 0 0 15px -3px rgba(239, 68, 68, 0.15);
+}
+
+/* React Flow custom styling */
+.react-flow__node {
+  border-radius: 8px;
+  padding: 10px;
+  font-family: 'Poppins', sans-serif;
+}
+.react-flow__controls {
+  background: #0f172a !important;
+  border: 1px solid #334155 !important;
+  border-radius: 6px !important;
+}
+.react-flow__controls-button {
+  background: #1e293b !important;
+  border-bottom: 1px solid #334155 !important;
+  color: #94a3b8 !important;
+}
+.react-flow__controls-button:hover {
+  background: #0d9488 !important;
+  color: #ffffff !important;
+}
+
+/* AG Grid Dark Industrial overrides */
+.ag-theme-alpine-dark {
+  --ag-background-color: #0f172a;
+  --ag-header-background-color: #1e293b;
+  --ag-odd-row-background-color: #0f172a;
+  --ag-row-hover-color: #1e293b;
+  --ag-border-color: #334155;
+  --ag-font-family: 'JetBrains Mono', monospace;
+  --ag-font-size: 13px;
+  --ag-header-foreground-color: #94a3b8;
+  --ag-foreground-color: #cbd5e1;
+}

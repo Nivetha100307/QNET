@@ -23,6 +23,12 @@ from app.schemas.key import (
     KeyStatusResponse,
     SharedKeyResponse
 )
+from app.schemas.security import (
+    SecurityAnalysisRequest,
+    SecurityAnalysisResponse,
+    SecurityStatusResponse,
+    SecurityMetricsResponse
+)
 
 __all__ = [
     "NodeEnum",
@@ -42,5 +48,9 @@ __all__ = [
     "KeyGenerationRequest",
     "KeyGenerationResponse",
     "KeyStatusResponse",
-    "SharedKeyResponse"
+    "SharedKeyResponse",
+    "SecurityAnalysisRequest",
+    "SecurityAnalysisResponse",
+    "SecurityStatusResponse",
+    "SecurityMetricsResponse"
 ]

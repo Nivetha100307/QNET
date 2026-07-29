@@ -213,6 +213,59 @@ export async function fetchQuantumKeyStatus(session_uuid: string): Promise<KeySt
   return res.json();
 }
 
+export interface SecurityAnalysisResponse {
+  session_uuid: string;
+  bell_test_result: string;
+  chsh_value: number;
+  qber: number;
+  fidelity: number;
+  security_score: number;
+  security_status: string;
+  measurement_count: number;
+  analysis_time_ms: number;
+  bell_correlations: Record<string, number>;
+  report_timestamp: string;
+}
+
+export interface SecurityStatusResponse {
+  session_uuid: string;
+  security_status: string;
+  security_score: number;
+  chsh_value: number;
+  qber: number;
+}
+
+export async function analyzeSecurity(session_uuid: string): Promise<SecurityAnalysisResponse> {
+  const res = await fetch(`${API_BASE}/security/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_uuid })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || 'Failed to analyze quantum security');
+  }
+  return res.json();
+}
+
+export async function fetchSecurityReport(session_uuid: string): Promise<SecurityAnalysisResponse> {
+  const res = await fetch(`${API_BASE}/security/${session_uuid}`);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || 'Failed to fetch security report');
+  }
+  return res.json();
+}
+
+export async function fetchSecurityStatus(session_uuid: string): Promise<SecurityStatusResponse> {
+  const res = await fetch(`${API_BASE}/security/status/${session_uuid}`);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || 'Failed to fetch security status');
+  }
+  return res.json();
+}
+
 export function subscribeToWebsocket(onMessage: (data: any) => void): () => void {
   const wsUrl = `ws://localhost:8000/api/v1/ws/sessions`;
   const ws = new WebSocket(wsUrl);
@@ -232,4 +285,5 @@ export function subscribeToWebsocket(onMessage: (data: any) => void): () => void
     }
   };
 }
+
 

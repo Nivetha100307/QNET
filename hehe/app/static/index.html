@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Module 8 — Real-Time Operations & Monitoring Center | QUANT QKD-SCADA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="theme-dark">
+
+  <!-- Application Shell -->
+  <div class="app-layout">
+
+    <!-- Collapsible Sidebar (72px -> 260px) -->
+    <aside class="sidebar" id="app-sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo">QUANT</div>
+        <span class="brand-name">Ops Center</span>
+        <button class="sidebar-toggle" id="sidebar-toggle-btn" title="Toggle Sidebar">‹</button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-tab="system-tab">
+          <span class="nav-icon">🖥️</span>
+          <span class="nav-label">System Dashboard</span>
+        </button>
+        <button class="nav-item" data-tab="scada-tab">
+          <span class="nav-icon">⚡</span>
+          <span class="nav-label">SCADA Operations</span>
+        </button>
+        <button class="nav-item" data-tab="quantum-tab">
+          <span class="nav-icon">⚛️</span>
+          <span class="nav-label">Quantum Monitoring</span>
+        </button>
+        <button class="nav-item" data-tab="comm-tab">
+          <span class="nav-icon">📡</span>
+          <span class="nav-label">Communication</span>
+        </button>
+        <button class="nav-item" data-tab="security-tab">
+          <span class="nav-icon">🛡️</span>
+          <span class="nav-label">Security SOC</span>
+        </button>
+        <button class="nav-item" data-tab="ai-tab">
+          <span class="nav-icon">🤖</span>
+          <span class="nav-label">AI Predictive</span>
+        </button>
+        <button class="nav-item" data-tab="topology-tab">
+          <span class="nav-icon">🌐</span>
+          <span class="nav-label">Network Topology</span>
+        </button>
+        <button class="nav-item" data-tab="flow-tab">
+          <span class="nav-icon">📦</span>
+          <span class="nav-label">Packet Flow</span>
+        </button>
+        <button class="nav-item" data-tab="logs-tab">
+          <span class="nav-icon">📋</span>
+          <span class="nav-label">Logs Explorer</span>
+        </button>
+        <button class="nav-item" data-tab="analytics-tab">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">Analytics</span>
+        </button>
+        <button class="nav-item" data-tab="comparison-tab">
+          <span class="nav-icon">⚔️</span>
+          <span class="nav-label">Classical vs Quantum</span>
+        </button>
+        <button class="nav-item" data-tab="reports-tab">
+          <span class="nav-icon">📄</span>
+          <span class="nav-label">Reports</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="system-status-indicator">
+          <span class="dot green" id="sidebar-ws-dot"></span>
+          <span class="status-text" id="sidebar-ws-text">WS Connected</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Container -->
+    <div class="main-wrapper">
+
+      <!-- Top Navbar -->
+      <header class="top-navbar">
+        <div class="navbar-left">
+          <div class="breadcrumb" id="breadcrumb-text">Module 8 / System Dashboard</div>
+        </div>
+
+        <div class="navbar-right">
+          <div class="live-clock" id="live-clock-display">00:00:00 UTC</div>
+          
+          <button class="theme-toggle-btn" id="theme-toggle-btn" title="Toggle Theme">
+            <span id="theme-btn-icon">🌙</span> <span id="theme-btn-label">Dark</span>
+          </button>
+
+          <div class="user-badge">
+            <span class="badge-role">OPERATOR</span>
+            <span class="badge-user">Substation North</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- View Containers (12 Pages) -->
+      <main class="content-area">
+
+        <!-- 1. System Dashboard Tab -->
+        <section class="tab-view active" id="system-tab">
+          <div class="view-header">
+            <h2>System Operations Summary</h2>
+            <div class="sub-text">Module 8 Operations & Monitoring Center — Integrated Systems Summary</div>
+          </div>
+
+          <div class="grid-layout">
+            <div class="card col-3">
+              <div class="card-title">System Status</div>
+              <div class="stat-value text-green" id="sys-status-val">ONLINE</div>
+              <div class="stat-sub">Network Health: <strong id="sys-health-pct">99.98%</strong></div>
+            </div>
+            <div class="card col-3">
+              <div class="card-title">Connected Substations</div>
+              <div class="stat-value text-teal" id="sys-substations-val">4</div>
+              <div class="stat-sub">Active Quantum Links: <strong id="sys-links-val">3</strong></div>
+            </div>
+            <div class="card col-3">
+              <div class="card-title">Current QBER</div>
+              <div class="stat-value text-yellow" id="sys-qber-val">1.2 %</div>
+              <div class="stat-sub">Secret Key Rate: <strong id="sys-key-rate">1.45 kbps</strong></div>
+            </div>
+            <div class="card col-3">
+              <div class="card-title">AI Threat Level</div>
+              <div class="stat-value text-green" id="sys-threat-val">LOW</div>
+              <div class="stat-sub">Active Alerts: <strong id="sys-alerts-count">0</strong></div>
+            </div>
+
+            <!-- SCADA & Zero-Trust Control Quick Actions -->
+            <div class="card col-6">
+              <div class="card-title">SCADA Command & Zero-Trust Verification</div>
+              <div class="control-grid">
+                <div class="form-group">
+                  <label>Command Type</label>
+                  <select id="sys-cmd-type">
+                    <option value="OPEN_BREAKER">OPEN_BREAKER (Breaker Control)</option>
+                    <option value="CLOSE_BREAKER">CLOSE_BREAKER (Breaker Control)</option>
+                    <option value="TRIP_RELAY">TRIP_RELAY (Emergency Relay)</option>
+                    <option value="RESET_RELAY">RESET_RELAY (Reset Protection)</option>
+                    <option value="READ_VOLTAGE">READ_VOLTAGE (Telemetry Sensor)</option>
+                    <option value="SET_TRANSFORMER_TAP">SET_TRANSFORMER_TAP (Tap Ratio)</option>
+                    <option value="EMERGENCY_SHUTDOWN">EMERGENCY_SHUTDOWN (Critical)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Target Substation Device</label>
+                  <select id="sys-cmd-device">
+                    <option value="BRK_12">BRK_12 (Substation North Breaker)</option>
+                    <option value="RELAY_04">RELAY_04 (Substation South Relay)</option>
+                    <option value="TRANS_TAP_01">TRANS_TAP_01 (Substation North Transformer)</option>
+                    <option value="GEN_MAIN_01">GEN_MAIN_01 (West Grid Generator)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>RBAC Role Authority</label>
+                  <select id="sys-cmd-role">
+                    <option value="CONTROL_OPERATOR">CONTROL_OPERATOR (Standard Control)</option>
+                    <option value="SUBSTATION_ENGINEER">SUBSTATION_ENGINEER (High Authority)</option>
+                    <option value="GRID_ADMIN">GRID_ADMIN (Full Authority)</option>
+                    <option value="VIEWER">VIEWER (Read-Only Denied)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="btn-group">
+                <button class="btn btn-primary" onclick="submitCommand()">⚡ Execute Command</button>
+                <button class="btn btn-outline" onclick="verifyZeroTrustPipeline()">🛡️ Run 20-Stage Verification</button>
+                <button class="btn btn-danger" onclick="penalizeTrust()">📉 Penalize Trust (-15)</button>
+                <button class="btn btn-success" onclick="resetTrust()">🔄 Reset Trust (100)</button>
+              </div>
+            </div>
+
+            <!-- Threat Simulator Panel -->
+            <div class="card col-6">
+              <div class="card-title">Interactive Threat Attack Simulator</div>
+              <div class="attack-grid">
+                <button class="attack-btn" onclick="triggerAttack('REPLAY_ATTACK')">
+                  🛑 <strong>Replay Attack</strong>
+                  <div class="sub">Duplicate nonce replay check</div>
+                </button>
+                <button class="attack-btn" onclick="triggerAttack('PAYLOAD_TAMPERING')">
+                  ⚠️ <strong>Payload Tampering</strong>
+                  <div class="sub">Altered ciphertext SHA-256</div>
+                </button>
+                <button class="attack-btn" onclick="triggerAttack('UNAUTHORIZED_DEVICE')">
+                  🚫 <strong>Unauth Device</strong>
+                  <div class="sub">Rogue RTU identity breach</div>
+                </button>
+                <button class="attack-btn" onclick="triggerAttack('EXPIRED_SESSION')">
+                  ⌛ <strong>Expired Key</strong>
+                  <div class="sub">Revoked session key</div>
+                </button>
+              </div>
+              <div class="attack-output-container">
+                <div class="output-title">Simulator Rationale & Defense Layer Output:</div>
+                <pre id="sys-attack-result">// Trigger an attack simulation above to demonstrate real-time defense-in-depth prevention...</pre>
+              </div>
+            </div>
+
+            <!-- 20-Stage Pipeline Visualizer -->
+            <div class="card col-6">
+              <div class="card-title">20-Stage Security Verification Pipeline Breakdown</div>
+              <div id="sys-pipeline-container" class="pipeline-container">
+                <div class="text-muted">Run Zero-Trust verification to inspect 20-stage pipeline breakdown...</div>
+              </div>
+            </div>
+
+            <!-- Live Security Alert Feed -->
+            <div class="card col-6">
+              <div class="card-title">SOC Security Alerts & Audit Feed</div>
+              <div id="sys-alerts-feed" class="alerts-feed">
+                <div class="text-muted">No security alerts recorded. Grid operational.</div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- 2. SCADA Operations Tab -->
+        <section class="tab-view" id="scada-tab">
+          <div class="view-header">
+            <h2>SCADA Grid Operations & Electrical Telemetry</h2>
+            <div class="sub-text">Module 5 — Live Electrical Parameters, Breaker Status, and Physical Controls</div>
+          </div>
+
+          <div class="grid-layout">
+            <div class="card col-3">
+              <div class="card-title">Substation Voltage</div>
+              <div class="stat-value text-teal" id="scada-v">230.2 V</div>
+              <div class="stat-sub">Nominal Range: 220V - 240V</div>
+            </div>
+            <div class="card col-3">
+              <div class="card-title">Substation Current</div>
+              <div class="stat-value text-teal" id="scada-i">14.8 A</div>
+              <div class="stat-sub">Load Factor: Normal</div>
+            </div>
+            <div class="card col-3">
+              <div class="card-title">Grid Frequency</div>
+              <div class="stat-value text-green" id="scada-f">50.01 Hz</div>
+              <div class="stat-sub">Standard: 50.00 Hz Sync</div>
+            </div>
+            <div class="card col-3">
+              <div class="card-title">Active Power</div>
+              <div class="stat-value text-teal" id="scada-p">3.40 kW</div>
+              <div class="stat-sub">Power Factor: <strong>0.98</strong></div>
+            </div>
+
+            <div class="card col-8">
+              <div class="card-title">Live Electrical Devices Telemetry Feed</div>
+              <div class="table-responsive">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Device ID</th>
+                      <th>Substation</th>
+                      <th>Voltage</th>
+                      <th>Current</th>
+                      <th>Power</th>
+                      <th>Frequency</th>
+                      <th>Breaker State</th>
+                      <th>Relay State</th>
+                    </tr>
+                  </thead>
+                  <tbody id="scada-telemetry-body">
+                    <tr><td colspan="8" class="text-muted text-center">Waiting for live telemetry stream...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="card col-4">
+              <div class="card-title">Transformer & Generator Control</div>
+              <div class="device-status-box">
+                <div class="status-row">
+                  <span>Transformer Tap Position:</span>
+                  <strong id="scada-tap-pos">5 (Ratio 1.05)</strong>
+                </div>
+                <div class="status-row">
+                  <span>Transformer Load:</span>
+                  <strong id="scada-trans-load">78.4 %</strong>
+                </div>
+                <div class="status-row">
+                  <span>Generator Status:</span>
+                  <strong class="text-green" id="scada-gen-status">RUNNING (1200 kW)</strong>
+                </div>
+              </div>
+
+              <div class="scada-controls-panel" style="margin-top: 15px;">
+                <button class="btn btn-primary" onclick="submitCommand('OPEN_BREAKER', 'BRK_12')">⚡ Open Breaker BRK_12</button>
+                <button class="btn btn-outline" style="margin-top:8px;" onclick="submitCommand('CLOSE_BREAKER', 'BRK_12')">🔌 Close Breaker BRK_12</button>
+                <button class="btn btn-danger" style="margin-top:8px;" onclick="submitCommand('EMERGENCY_SHUTDOWN', 'BRK_12')">🚨 Emergency Shutdown</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. Quantum Monitoring Tab -->
+        <section class="tab-view" id="quantum-tab">
+          <div class="view-header">
+            <h2>E91 Quantum Key Distribution (QKD) Center</h2>
+            <div class="sub-text">Modules 1–3 — Entangled Photon Pairs, CHSH Bell Inequality & Key Generation</div>
+          </div>
+
+          <div class="grid-layout">
+            <div class="card col-3">
+              <div class="card-title">CHSH Bell Score (S)</div>
+              <div class="stat-value text-teal" id="qkd-bell">2.82</div>
+              <div class="stat-sub">S > 2.0 (Quantum Entanglement Proven)</div>
+            </div>
+            <div class="card col-3">
+              <div class="card-title">QBER (Error Rate)</div>
+              <div class="stat-value text-yellow" id="qkd-qber">1.20 %</div>
+              <div class="stat-sub">Threshold Limit: 11.0%</div>
+            </div>
+            <div class="card col-3">
+              <div class="card-title">Entanglement Fidelity</div>
+              <div class="stat-value text-green" id="qkd-fidelity">99.4 %</div>
+              <div class="stat-sub">Channel Quality: EXCELLENT</div>
+            </div>
+            <div class="card col-3">
+              <div class="card-title">Secret Key Rate</div>
+              <div class="stat-value text-teal" id="qkd-rate">1.45 kbps</div>
+              <div class="stat-sub">Rate: 12,400 pairs/sec</div>
+            </div>
+
+            <div class="card col-12">
+              <div class="card-title">Quantum Channel Entanglement Lifecycle</div>
+              <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="qkd-progress-fill" style="width: 84.5%;"></div>
+              </div>
+              <div class="progress-labels">
+                <span>Photon Generation (E91)</span>
+                <span>Basis Reconciliation</span>
+                <span>Error Correction (QBER 1.2%)</span>
+                <span>Privacy Amplification</span>
+                <strong class="text-teal">Secret Key Ready (256-bit)</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. Communication Tab -->
+        <section class="tab-view" id="comm-tab">
+          <div class="view-header">
+            <h2>SCADA Transport & Communication Metrics</h2>
+            <div class="sub-text">Module 5 — Encryption Latency, Bandwidth, Throughput, and Message Flow</div>
+          </div>
+
+          <div class="grid-layout">
+            <div class="card col-3">
+              <div class="card-title">Encryption Latency</div>
+              <div class="stat-value text-teal" id="comm-latency">1.85 ms</div>
+              <div class="stat-sub">AES-256-GCM Hardware Accel</div>
+            </div>
+            <div class="card col-3">
+              <div class="card-title">Packet Throughput</div>
+              <div class="stat-value text-green" id="comm-throughput">42.5 msg/s</div>
+              <div class="stat-sub">Bandwidth: 128.4 kbps</div>
+            </div>
+            <div class="card col-3">
+              <div class="card-title">Packet Loss</div>
+              <div class="stat-value text-green" id="comm-loss">0.0 %</div>
+              <div class="stat-sub">Zero Dropped Packets</div>
+            </div>
+            <div class="card col-3">
+              <div class="card-title">Round-Trip Time (RTT)</div>
+              <div class="stat-value text-teal" id="comm-rtt">3.40 ms</div>
+              <div class="stat-sub">Jitter: 0.22 ms</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. Security SOC Tab -->
+        <section class="tab-view" id="security-tab">
+          <div class="view-header">
+            <h2>Zero-Trust Security Operations Center (SOC)</h2>
+            <div class="sub-text">Module 6 — Identity Whitelist, RBAC Matrix, HMAC Signatures, and Dynamic Trust Scores</div>
+          </div>
+
+          <div class="grid-layout">
+            <div class="card col-4">
+              <div class="card-title">Security Risk Level</div>
+              <div class="stat-value text-green" id="soc-risk">LOW</div>
+              <div class="stat-sub">Overall Risk Score: <strong id="soc-risk-score">12.5 / 100</strong></div>
+            </div>
+            <div class="card col-4">
+              <div class="card-title">Authentication Success Rate</div>
+              <div class="stat-value text-green" id="soc-auth-succ">100.0 %</div>
+              <div class="stat-sub">Failed Auth Attempts: <strong id="soc-auth-fail">0</strong></div>
+            </div>
+            <div class="card col-4">
+              <div class="card-title">Replay Attacks Rejected</div>
+              <div class="stat-value text-yellow" id="soc-replay-rej">0</div>
+              <div class="stat-sub">Integrity Failures: <strong id="soc-integ-fail">0</strong></div>
+            </div>
+
+            <div class="card col-12">
+              <div class="card-title">Device Trust Inventory & Reputation Scores</div>
+              <div class="table-responsive">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Device ID</th>
+                      <th>Device Name</th>
+                      <th>Substation</th>
+                      <th>Status</th>
+                      <th>Trust Score</th>
+                      <th>Reputation</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="soc-trust-table-body">
+                    <tr><td colspan="7" class="text-muted text-center">Loading device trust inventory...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. AI Predictive Tab -->
+        <section class="tab-view" id="ai-tab">
+          <div class="view-header">
+            <h2>AI Threat Analytics & Anomaly Detection</h2>
+            <div class="sub-text">Module 4 — Machine Learning Anomaly Detection & Threat Probability</div>
+          </div>
+
+          <div class="grid-layout">
+            <div class="card col-4">
+              <div class="card-title">Predicted Attack Status</div>
+              <div class="stat-value text-green" id="ai-pred-status">NO THREAT</div>
+              <div class="stat-sub">Anomaly Confidence: <strong id="ai-conf">96.8%</strong></div>
+            </div>
+            <div class="card col-4">
+              <div class="card-title">Threat Probability</div>
+              <div class="stat-value text-teal" id="ai-prob">8.4 %</div>
+              <div class="stat-sub">Baseline Variance Normal</div>
+            </div>
+            <div class="card col-4">
+              <div class="card-title">Device Anomaly Score</div>
+              <div class="stat-value text-green" id="ai-anomaly">0.02</div>
+              <div class="stat-sub">Isolation Threshold: 0.85</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 7. Network Topology Tab -->
+        <section class="tab-view" id="topology-tab">
+          <div class="view-header">
+            <h2>Interactive Quantum-SCADA Network Topology</h2>
+            <div class="sub-text">Module 8 — Real-Time Node Health, Entangled Quantum Channels, and Sessions</div>
+          </div>
+
+          <div class="grid-layout">
+            <div class="card col-12">
+              <div class="card-title">Live Topology Canvas</div>
+              <div class="topology-container">
+                <svg id="topology-svg" width="100%" height="450" viewBox="0 0 800 450">
+                  <!-- Connections/Edges -->
+                  <line x1="400" y1="80" x2="200" y2="220" class="edge-quantum" />
+                  <line x1="400" y1="80" x2="600" y2="220" class="edge-quantum" />
+                  <line x1="200" y1="220" x2="400" y2="360" class="edge-session" />
+                  <line x1="600" y1="220" x2="400" y2="360" class="edge-session" />
+
+                  <line x1="200" y1="220" x2="120" y2="340" class="edge-classical" />
+                  <line x1="200" y1="220" x2="280" y2="340" class="edge-classical" />
+                  <line x1="600" y1="220" x2="680" y2="340" class="edge-classical" />
+                  <line x1="400" y1="360" x2="520" y2="360" class="edge-classical" />
+
+                  <!-- Nodes -->
+                  <g class="node" transform="translate(400, 80)">
+                    <circle r="26" class="node-circle node-green" />
+                    <text y="5" class="node-text">Control Centre</text>
+                  </g>
+                  <g class="node" transform="translate(200, 220)">
+                    <circle r="22" class="node-circle node-green" />
+                    <text y="5" class="node-text">Sub North</text>
+                  </g>
+                  <g class="node" transform="translate(600, 220)">
+                    <circle r="22" class="node-circle node-green" />
+                    <text y="5" class="node-text">Sub South</text>
+                  </g>
+                  <g class="node" transform="translate(400, 360)">
+                    <circle r="22" class="node-circle node-green" />
+                    <text y="5" class="node-text">Sub West</text>
+                  </g>
+                  <g class="node" transform="translate(120, 340)">
+                    <circle r="18" class="node-circle node-green" />
+                    <text y="4" class="node-text">BRK_12</text>
+                  </g>
+                  <g class="node" transform="translate(680, 340)">
+                    <circle r="18" class="node-circle node-green" />
+                    <text y="4" class="node-text">RELAY_04</text>
+                  </g>
+                  <g class="node" transform="translate(280, 340)">
+                    <circle r="18" class="node-circle node-green" />
+                    <text y="4" class="node-text">TRANS_01</text>
+                  </g>
+                  <g class="node" transform="translate(520, 360)">
+                    <circle r="18" class="node-circle node-green" />
+                    <text y="4" class="node-text">GEN_01</text>
+                  </g>
+                </svg>
+
+                <div class="topology-legend">
+                  <span class="legend-item"><span class="legend-dot green"></span> Healthy Node</span>
+                  <span class="legend-item"><span class="legend-dot yellow"></span> Warning</span>
+                  <span class="legend-item"><span class="legend-dot red"></span> Offline / Isolated</span>
+                  <span class="legend-item"><span class="legend-line blue"></span> Quantum Link (E91 QKD)</span>
+                  <span class="legend-item"><span class="legend-line cyan"></span> AES-256 Session</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 8. Packet Flow Animation Tab -->
+        <section class="tab-view" id="flow-tab">
+          <div class="view-header">
+            <h2>Multi-Stage SCADA Packet Flow Visualizer</h2>
+            <div class="sub-text">Module 8 — End-to-End Cryptographic Packet Transmission Animation</div>
+          </div>
+
+          <div class="grid-layout">
+            <div class="card col-12">
+              <div class="card-title">Animated Packet Lifecycle Pipeline</div>
+              <div class="flow-pipeline-container">
+                <div class="flow-step" id="flow-step-1">
+                  <div class="step-num">1</div>
+                  <div class="step-title">Command Created</div>
+                  <div class="step-desc">SCADA Object Generated</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step" id="flow-step-2">
+                  <div class="step-num">2</div>
+                  <div class="step-title">Authenticated</div>
+                  <div class="step-desc">Identity & HMAC Check</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step" id="flow-step-3">
+                  <div class="step-num">3</div>
+                  <div class="step-title">Encrypted</div>
+                  <div class="step-desc">AES-256-GCM HKDF Key</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step" id="flow-step-4">
+                  <div class="step-num">4</div>
+                  <div class="step-title">Transmitted</div>
+                  <div class="step-desc">Secure Channel Transport</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step" id="flow-step-5">
+                  <div class="step-num">5</div>
+                  <div class="step-title">Received</div>
+                  <div class="step-desc">Gateway Buffer Receiver</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step" id="flow-step-6">
+                  <div class="step-num">6</div>
+                  <div class="step-title">Verified</div>
+                  <div class="step-desc">20-Stage Zero-Trust Engine</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step" id="flow-step-7">
+                  <div class="step-num">7</div>
+                  <div class="step-title">Decrypted</div>
+                  <div class="step-desc">AES-GCM Auth Tag Match</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step" id="flow-step-8">
+                  <div class="step-num">8</div>
+                  <div class="step-title">Executed</div>
+                  <div class="step-desc">Grid Actuator Tripped</div>
+                </div>
+              </div>
+
+              <div style="margin-top: 20px; text-align: center;">
+                <button class="btn btn-primary" style="max-width: 300px; margin: 0 auto;" onclick="triggerPacketFlowAnimation()">▶️ Animate Packet Transmission Flow</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 9. Logs Explorer Tab -->
+        <section class="tab-view" id="logs-tab">
+          <div class="view-header">
+            <h2>Multi-Category Terminal Logs Explorer</h2>
+            <div class="sub-text">Module 8 — SCADA, Security, Packet, Audit, Telemetry & Authentication Logs</div>
+          </div>
+
+          <div class="grid-layout">
+            <div class="card col-12">
+              <div class="logs-toolbar">
+                <div class="toolbar-group">
+                  <label>Category Filter:</label>
+                  <select id="log-category-select" onchange="fetchDashboardLogs()">
+                    <option value="ALL">ALL CATEGORIES</option>
+                    <option value="SCADA">SCADA Logs</option>
+                    <option value="SECURITY">Security Logs</option>
+                    <option value="QUANTUM">Quantum Logs</option>
+                    <option value="PACKET">Packet Logs</option>
+                    <option value="TELEMETRY">Telemetry Logs</option>
+                    <option value="AUDIT">Audit Logs</option>
+                  </select>
+                </div>
+
+                <div class="toolbar-group">
+                  <label>Search:</label>
+                  <input type="text" id="log-search-input" placeholder="Search message, ID, or parameters..." onkeyup="fetchDashboardLogs()">
+                </div>
+
+                <div class="toolbar-group">
+                  <button class="btn btn-outline" onclick="exportLogsCSV()">📥 Export CSV</button>
+                </div>
+              </div>
+
+              <div class="terminal-logs-window" id="terminal-logs-window">
+                <div class="log-line text-muted">[SYSTEM] Initializing Terminal Logs Explorer...</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 10. Analytics Tab -->
+        <section class="tab-view" id="analytics-tab">
+          <div class="view-header">
+            <h2>Performance Analytics & Historical Trends</h2>
+            <div class="sub-text">Module 8 — Latency, Throughput, QBER Trends, and Security Performance</div>
+          </div>
+
+          <div class="grid-layout">
+            <div class="card col-6">
+              <div class="card-title">Encryption & Transport Latency Trend (ms)</div>
+              <div class="analytics-chart-box" id="chart-latency-box">
+                <div class="simple-bar-chart">
+                  <div class="bar-col" style="height: 60%;"><span class="bar-label">2.4ms</span></div>
+                  <div class="bar-col" style="height: 50%;"><span class="bar-label">2.1ms</span></div>
+                  <div class="bar-col" style="height: 45%;"><span class="bar-label">1.9ms</span></div>
+                  <div class="bar-col" style="height: 40%;"><span class="bar-label">1.85ms</span></div>
+                  <div class="bar-col" style="height: 38%;"><span class="bar-label">1.82ms</span></div>
+                  <div class="bar-col active" style="height: 40%;"><span class="bar-label">1.85ms</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card col-6">
+              <div class="card-title">QBER Trend (% Error Rate)</div>
+              <div class="analytics-chart-box" id="chart-qber-box">
+                <div class="simple-bar-chart">
+                  <div class="bar-col yellow" style="height: 70%;"><span class="bar-label">1.4%</span></div>
+                  <div class="bar-col yellow" style="height: 65%;"><span class="bar-label">1.3%</span></div>
+                  <div class="bar-col yellow" style="height: 60%;"><span class="bar-label">1.25%</span></div>
+                  <div class="bar-col yellow" style="height: 58%;"><span class="bar-label">1.2%</span></div>
+                  <div class="bar-col yellow" style="height: 55%;"><span class="bar-label">1.18%</span></div>
+                  <div class="bar-col yellow active" style="height: 58%;"><span class="bar-label">1.2%</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 11. Classical vs Quantum Comparison Tab -->
+        <section class="tab-view" id="comparison-tab">
+          <div class="view-header">
+            <h2>Classical vs Quantum Security Comparison Engine</h2>
+            <div class="sub-text">Module 8 — Problem Statement Resolution: Classical RSA/ECDH vs Quantum E91 QKD</div>
+          </div>
+
+          <div class="grid-layout">
+            <div class="card col-12">
+              <div class="card-title">Side-by-Side Architectural & Security Metrics Comparison</div>
+              <div class="table-responsive">
+                <table class="comparison-table">
+                  <thead>
+                    <tr>
+                      <th>Security Parameter</th>
+                      <th>Classical Infrastructure (RSA / ECDH)</th>
+                      <th>Quantum Infrastructure (E91 QKD)</th>
+                      <th>Quantum Advantage Rationale</th>
+                    </tr>
+                  </thead>
+                  <tbody id="comparison-table-body">
+                    <tr><td colspan="4" class="text-muted text-center">Loading comparison metrics...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 12. Reports Tab -->
+        <section class="tab-view" id="reports-tab">
+          <div class="view-header">
+            <h2>System Report Generation & Export Center</h2>
+            <div class="sub-text">Module 8 — Download Security, Performance, Quantum & SCADA Reports</div>
+          </div>
+
+          <div class="grid-layout">
+            <div class="card col-12">
+              <div class="card-title">Available System Reports</div>
+              <div class="reports-grid" id="reports-grid-container">
+                <div class="text-muted">Loading generated reports...</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

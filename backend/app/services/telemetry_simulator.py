@@ -135,7 +135,7 @@ class TelemetrySimulator:
                             "bytes_transferred": data["bytes_transferred"],
                             "node_health": node_health,
                         }
-                        await ws_manager.broadcast(payload)
+                        await ws_manager.broadcast("TELEMETRY_UPDATE", payload)
                 
                 await asyncio.sleep(2.0)
             except asyncio.CancelledError:

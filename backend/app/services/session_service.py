@@ -15,6 +15,12 @@ from app.common.event_types import WSEventType
 from app.core.state_machine import SessionStateMachine, InvalidStateTransitionError
 from app.core.logging_config import log_session_event, logger
 from app.core.websocket_manager import ws_manager
+from app.services.telemetry_simulator import (
+    generate_dynamic_quantum_channel,
+    generate_dynamic_classical_channel,
+    generate_dynamic_node_health,
+    telemetry_simulator
+)
 
 
 class DuplicateActiveSessionError(ValueError):
@@ -59,20 +65,21 @@ class SessionService:
 
         session_id = str(uuid.uuid4())
         
-        quantum_channel = QuantumChannelProperties().model_dump()
-        classical_channel = ClassicalChannelProperties().model_dump()
+        quantum_channel = generate_dynamic_quantum_channel(request.source_node.value, request.destination_node.value)
+        classical_channel = generate_dynamic_classical_channel(request.source_node.value, request.destination_node.value)
         
+        node_health_map = generate_dynamic_node_health()
         node_status = {
-            request.source_node.value: "HEALTHY",
-            request.destination_node.value: "HEALTHY"
+            request.source_node.value: node_health_map.get(request.source_node.value, {}).get("status", "HEALTHY"),
+            request.destination_node.value: node_health_map.get(request.destination_node.value, {}).get("status", "HEALTHY")
         }
         
         route = [request.source_node.value, request.destination_node.value]
         
         timeline = [
             self._create_timeline_event(WSEventType.SESSION_CREATED.value, SessionStatus.INITIALIZING.value, "Session initialized"),
-            self._create_timeline_event("QUANTUM_CHANNEL_INITIALIZED", SessionStatus.INITIALIZING.value, "Quantum channel status: CONNECTED"),
-            self._create_timeline_event("CLASSICAL_CHANNEL_INITIALIZED", SessionStatus.INITIALIZING.value, "Classical channel status: CONNECTED"),
+            self._create_timeline_event("QUANTUM_CHANNEL_INITIALIZED", SessionStatus.INITIALIZING.value, f"Quantum channel status: CONNECTED ({quantum_channel['latency_ms']} ms)"),
+            self._create_timeline_event("CLASSICAL_CHANNEL_INITIALIZED", SessionStatus.INITIALIZING.value, f"Classical channel status: CONNECTED ({classical_channel['latency_ms']} ms)"),
         ]
 
         # Initial FSM state: IDLE -> INITIALIZING -> READY
@@ -114,7 +121,9 @@ class SessionService:
             "source_node": created_session.source_node,
             "destination_node": created_session.destination_node,
             "protocol": created_session.protocol,
-            "status": created_session.status
+            "status": created_session.status,
+            "quantum_channel": created_session.quantum_channel,
+            "classical_channel": created_session.classical_channel
         }
         
         await ws_manager.broadcast(WSEventType.SESSION_CREATED.value, payload)
@@ -142,6 +151,15 @@ class SessionService:
 
         updated_session = await self.repository.update(session)
 
+        # Start live background telemetry updates
+        telemetry_simulator.start_session_telemetry(
+            session_id=session.session_id,
+            source_node=session.source_node,
+            destination_node=session.destination_node,
+            initial_msg_count=session.message_count or 0,
+            initial_bytes=session.bytes_transferred or 0
+        )
+
         log_session_event(
             session_id=session.session_id,
             source=session.source_node,
@@ -165,6 +183,9 @@ class SessionService:
 
         current_status = SessionStatus(session.status)
         SessionStateMachine.validate_transition(current_status, SessionStatus.TERMINATED)
+
+        # Stop telemetry simulation loop if active
+        telemetry_simulator.stop_session_telemetry(session_id)
 
         session.status = SessionStatus.TERMINATED.value
         session.ended_at = utc_now()

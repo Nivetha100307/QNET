@@ -42,6 +42,29 @@ export interface SessionResponse {
   ended_at: string | null;
 }
 
+export interface QuantumMeasurementResponse {
+  session_uuid: string;
+  status: string;
+  protocol_version: string;
+  bell_pair_count: number;
+  shots: number;
+  alice_basis: string[];
+  bob_basis: string[];
+  alice_bits: number[];
+  bob_bits: number[];
+  execution_backend: string;
+  simulation_time_ms: number;
+  circuit_qasm: string | null;
+  circuit_diagram: string | null;
+}
+
+export interface QuantumCircuitResponse {
+  session_uuid: string;
+  circuit_qasm: string | null;
+  circuit_diagram: string | null;
+  backend: string;
+}
+
 const API_BASE = 'http://localhost:8000/api/v1';
 
 export async function createSession(payload: {
@@ -100,6 +123,44 @@ export async function fetchSessionById(sessionId: string): Promise<SessionRespon
   const res = await fetch(`${API_BASE}/session/${sessionId}`);
   if (!res.ok) {
     throw new Error('Failed to fetch session details');
+  }
+  return res.json();
+}
+
+export async function startQuantumMeasurement(
+  session_uuid: string,
+  shots: number = 1024
+): Promise<QuantumMeasurementResponse> {
+  const res = await fetch(`${API_BASE}/quantum/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_uuid, shots })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || 'Failed to execute quantum measurement');
+  }
+  return res.json();
+}
+
+export async function fetchQuantumMeasurement(
+  session_uuid: string
+): Promise<QuantumMeasurementResponse> {
+  const res = await fetch(`${API_BASE}/quantum/measurement/${session_uuid}`);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || 'Failed to fetch quantum measurement');
+  }
+  return res.json();
+}
+
+export async function fetchQuantumCircuit(
+  session_uuid: string
+): Promise<QuantumCircuitResponse> {
+  const res = await fetch(`${API_BASE}/quantum/circuit/${session_uuid}`);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || 'Failed to fetch quantum circuit');
   }
   return res.json();
 }

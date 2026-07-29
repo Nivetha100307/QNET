@@ -7,7 +7,11 @@ from app.core.config import settings
 from app.core.logging_config import logger
 from app.database.connection import init_db
 from app.api.session import router as session_router
+from app.api.quantum import router as quantum_router
 from app.api.websocket import router as ws_router
+
+
+from app.services.telemetry_simulator import telemetry_simulator
 
 
 @asynccontextmanager
@@ -20,13 +24,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.warning(f"Database initialization deferred or failed: {str(e)}")
     
+    # Launch telemetry simulation loop
+    telemetry_simulator.start_loop()
+    
     yield
+    
+    logger.info("Stopping telemetry background loop...")
+    telemetry_simulator.stop_loop()
     logger.info("QNetSecure Backend shutting down.")
 
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="Production-Ready Quantum-Secured SCADA Communication Framework (Module 1)",
+    description="Production-Ready Quantum-Secured SCADA Communication Framework (Module 1 & 2)",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -42,6 +52,7 @@ app.add_middleware(
 
 # Register Routers
 app.include_router(session_router, prefix=settings.API_V1_STR)
+app.include_router(quantum_router, prefix=settings.API_V1_STR)
 app.include_router(ws_router, prefix=settings.API_V1_STR)
 
 

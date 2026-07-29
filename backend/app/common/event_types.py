@@ -1,0 +1,9 @@
+from enum import Enum
+
+class WSEventType(str, Enum):
+    """WebSocket Broadcast Event Identifiers."""
+    SESSION_CREATED = "SESSION_CREATED"
+    CHANNEL_CONNECTED = "CHANNEL_CONNECTED"
+    SESSION_READY = "SESSION_READY"
+    SESSION_ACTIVATED = "SESSION_ACTIVATED"
+    SESSION_TERMINATED = "SESSION_TERMINATED"

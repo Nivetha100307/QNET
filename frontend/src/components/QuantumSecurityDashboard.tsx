@@ -21,8 +21,8 @@ import {
   SecurityAnalysisResponse,
   analyzeSecurity,
   fetchSecurityReport,
-  subscribeToWebsocket
-} from '../services/api';
+  EventBus
+} from '../services';
 
 interface QuantumSecurityDashboardProps {
   session: SessionResponse;
@@ -58,20 +58,22 @@ export const QuantumSecurityDashboard: React.FC<QuantumSecurityDashboardProps> =
       loadReport();
     }
 
-    const unsubscribe = subscribeToWebsocket((msg) => {
-      if (msg.session_id === session.session_id || msg.data?.session_id === session.session_id) {
+    const unsubscribe = EventBus.on('*', (msgData: any) => {
+      const msg = msgData.data || msgData;
+      const eventName = msgData.event || msg.event;
+      if (msg.session_id === session.session_id || msg.session_uuid === session.session_id) {
         const timestamp = new Date().toLocaleTimeString();
-        if (msg.event === 'SECURITY_ANALYSIS_STARTED') {
+        if (eventName === 'SECURITY_ANALYSIS_STARTED') {
           setLiveLogs((prev) => [{ timestamp, event: 'ANALYSIS_STARTED', details: 'Initializing quantum security engine...' }, ...prev]);
-        } else if (msg.event === 'BELL_TEST_COMPLETED') {
+        } else if (eventName === 'BELL_TEST_COMPLETED') {
           setLiveLogs((prev) => [{ timestamp, event: 'BELL_TEST_COMPLETED', details: 'Bell correlation matrix calculated.' }, ...prev]);
-        } else if (msg.event === 'CHSH_COMPLETED') {
+        } else if (eventName === 'CHSH_COMPLETED') {
           setLiveLogs((prev) => [{ timestamp, event: 'CHSH_COMPLETED', details: `CHSH S = ${msg.chsh_value?.toFixed(3)} (${msg.bell_test_result})` }, ...prev]);
-        } else if (msg.event === 'QBER_COMPLETED') {
+        } else if (eventName === 'QBER_COMPLETED') {
           setLiveLogs((prev) => [{ timestamp, event: 'QBER_COMPLETED', details: `QBER = ${(msg.qber * 100).toFixed(2)}%` }, ...prev]);
-        } else if (msg.event === 'FIDELITY_COMPLETED') {
+        } else if (eventName === 'FIDELITY_COMPLETED') {
           setLiveLogs((prev) => [{ timestamp, event: 'FIDELITY_COMPLETED', details: `Estimated Fidelity = ${msg.fidelity?.toFixed(3)}` }, ...prev]);
-        } else if (msg.event === 'SECURITY_REPORT_READY') {
+        } else if (eventName === 'SECURITY_REPORT_READY') {
           setLiveLogs((prev) => [{ timestamp, event: 'REPORT_READY', details: `Security Status: ${msg.security_status} (Score ${msg.security_score}/100)` }, ...prev]);
         }
       }

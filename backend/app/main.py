@@ -6,12 +6,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.logging_config import logger
 from app.database.connection import init_db
+
+# Routers for Modules 1 through 8
 from app.api.session import router as session_router
 from app.api.quantum import router as quantum_router
 from app.key_management.key_api import router as key_router
 from app.security.security_api import router as security_router
+from app.scada.scada_api import router as scada_router
+from app.zero_trust.zero_trust_api import router as zero_trust_router
+from app.repeater.repeater_api import router as repeater_router
+from app.cascade.cascade_api import router as cascade_router
 from app.api.websocket import router as ws_router
-
 
 from app.services.telemetry_simulator import telemetry_simulator
 
@@ -38,7 +43,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="Production-Ready Quantum-Secured SCADA Communication Framework (Modules 1, 2, 3 & 4)",
+    description="Production-Ready Quantum-Secured SCADA Communication Framework (Modules 1–8 Unified Architecture)",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -52,11 +57,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Register Routers
+# Register All Module Routers
 app.include_router(session_router, prefix=settings.API_V1_STR)
 app.include_router(quantum_router, prefix=settings.API_V1_STR)
 app.include_router(key_router, prefix=settings.API_V1_STR)
 app.include_router(security_router, prefix=settings.API_V1_STR)
+app.include_router(scada_router, prefix=settings.API_V1_STR)
+app.include_router(zero_trust_router, prefix=settings.API_V1_STR)
+app.include_router(repeater_router, prefix=settings.API_V1_STR)
+app.include_router(cascade_router, prefix=settings.API_V1_STR)
 app.include_router(ws_router, prefix=settings.API_V1_STR)
 
 
@@ -66,8 +75,8 @@ async def root() -> dict:
     return {
         "status": "ONLINE",
         "system": settings.APP_NAME,
-        "module": "Module 1 - Session & Network Initialization",
-        "protocol": "E91 Quantum Cryptography Framework"
+        "modules": "Modules 1 through 8 Unified Engine",
+        "protocol": "E91 Quantum Cryptography & Zero-Trust SCADA Framework"
     }
 
 

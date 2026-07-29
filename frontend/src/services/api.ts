@@ -165,6 +165,54 @@ export async function fetchQuantumCircuit(
   return res.json();
 }
 
+export interface QuantumKeyResponse {
+  session_uuid: string;
+  generation_status: string;
+  matching_indexes: number[];
+  alice_key: string;
+  bob_key: string;
+  shared_key: string;
+  key_length: number;
+  created_at: string;
+}
+
+export interface KeyStatusResponse {
+  session_uuid: string;
+  generation_status: string;
+  key_length: number;
+}
+
+export async function generateQuantumKey(session_uuid: string): Promise<QuantumKeyResponse> {
+  const res = await fetch(`${API_BASE}/key/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_uuid })
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || 'Failed to generate quantum key');
+  }
+  return res.json();
+}
+
+export async function fetchQuantumKey(session_uuid: string): Promise<QuantumKeyResponse> {
+  const res = await fetch(`${API_BASE}/key/${session_uuid}`);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || 'Failed to fetch quantum key');
+  }
+  return res.json();
+}
+
+export async function fetchQuantumKeyStatus(session_uuid: string): Promise<KeyStatusResponse> {
+  const res = await fetch(`${API_BASE}/key/status/${session_uuid}`);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || 'Failed to fetch quantum key status');
+  }
+  return res.json();
+}
+
 export function subscribeToWebsocket(onMessage: (data: any) => void): () => void {
   const wsUrl = `ws://localhost:8000/api/v1/ws/sessions`;
   const ws = new WebSocket(wsUrl);
@@ -184,3 +232,4 @@ export function subscribeToWebsocket(onMessage: (data: any) => void): () => void
     }
   };
 }
+

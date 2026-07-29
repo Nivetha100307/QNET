@@ -8,6 +8,7 @@ from app.core.logging_config import logger
 from app.database.connection import init_db
 from app.api.session import router as session_router
 from app.api.quantum import router as quantum_router
+from app.key_management.key_api import router as key_router
 from app.api.websocket import router as ws_router
 
 
@@ -36,7 +37,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(
     title=settings.APP_NAME,
-    description="Production-Ready Quantum-Secured SCADA Communication Framework (Module 1 & 2)",
+    description="Production-Ready Quantum-Secured SCADA Communication Framework (Modules 1, 2 & 3)",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -53,6 +54,7 @@ app.add_middleware(
 # Register Routers
 app.include_router(session_router, prefix=settings.API_V1_STR)
 app.include_router(quantum_router, prefix=settings.API_V1_STR)
+app.include_router(key_router, prefix=settings.API_V1_STR)
 app.include_router(ws_router, prefix=settings.API_V1_STR)
 
 

@@ -1,6 +1,6 @@
 # Models package
 from app.models.session import QuantumSession
 from app.models.quantum_measurement import QuantumMeasurement
+from app.models.quantum_key import QuantumKey
 
-__all__ = ["QuantumSession", "QuantumMeasurement"]
-
+__all__ = ["QuantumSession", "QuantumMeasurement", "QuantumKey"]

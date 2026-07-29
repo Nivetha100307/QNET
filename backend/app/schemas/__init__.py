@@ -11,6 +11,18 @@ from app.schemas.session import (
     SessionResponse,
     SessionStatusResponse,
 )
+from app.schemas.quantum import (
+    QuantumStartRequest,
+    QuantumMeasurementResponse,
+    MeasurementResult,
+    BasisResponse
+)
+from app.schemas.key import (
+    KeyGenerationRequest,
+    KeyGenerationResponse,
+    KeyStatusResponse,
+    SharedKeyResponse
+)
 
 __all__ = [
     "NodeEnum",
@@ -23,4 +35,12 @@ __all__ = [
     "EndSessionRequest",
     "SessionResponse",
     "SessionStatusResponse",
+    "QuantumStartRequest",
+    "QuantumMeasurementResponse",
+    "MeasurementResult",
+    "BasisResponse",
+    "KeyGenerationRequest",
+    "KeyGenerationResponse",
+    "KeyStatusResponse",
+    "SharedKeyResponse"
 ]

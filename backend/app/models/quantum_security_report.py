@@ -29,7 +29,7 @@ class QuantumSecurityReport(Base):
     fidelity: Mapped[float] = mapped_column(Float, nullable=False)             # 0.0 to 1.0
     
     # Decision Engine outputs
-    security_status: Mapped[str] = mapped_column(String(20), nullable=False)  # "SECURE", "WARNING", "COMPROMISED"
+    security_status: Mapped[str] = mapped_column(String(50), nullable=False)  # "Quantum Channel Verified", "Quantum Channel Degraded", "Quantum Channel Rejected"
     security_score: Mapped[int] = mapped_column(Integer, nullable=False)       # 0 to 100
     
     # Execution Metadata

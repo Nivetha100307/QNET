@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Dict, Any
 from app.security.utils import THRESHOLDS, SecurityThresholds
 from app.core.logging_config import logger
 
@@ -8,58 +8,94 @@ def evaluate_security_status(
     qber: float,
     fidelity: float,
     thresholds: SecurityThresholds = THRESHOLDS
-) -> Tuple[str, int]:
-    """Evaluates Security Decision ('SECURE', 'WARNING', 'COMPROMISED') and normalized score (0-100).
+) -> Tuple[str, int, Dict[str, Any]]:
+    """Sequential E91 Security Decision Engine with 2 Hard Gatekeepers, Quality Assessment & Weighted Score.
 
-    Business Rules:
-        If CHSH > CHSH_SECURE (2.0) AND QBER <= QBER_SECURE (0.11) AND Fidelity >= FIDELITY_SECURE (0.85):
-            Return "SECURE"
-        Else if CHSH > CHSH_WARNING (1.8) OR QBER <= QBER_WARNING (0.15) OR Fidelity >= FIDELITY_WARNING (0.70):
-            Return "WARNING"
-        Else:
-            Return "COMPROMISED"
+    Step 7 & Step 8 Rules:
+        Gate 1 (CHSH Bell Inequality Test):
+            if |S| <= 2.0:
+                Status: 'Quantum Channel Rejected'
+                Bell Test: FAIL
+                Raw Key: Discarded
+                Module 5: Disabled
+                STOP
 
-    Score Formula:
-        Score = clamp(0, 100, (|S| / 2.8284 * 50) + ((1 - QBER) * 30) + (Fidelity * 20))
+        Gate 2 (QBER Error Rate Check):
+            if QBER >= 11% (0.11):
+                Status: 'Quantum Channel Rejected'
+                Raw Key: Discarded
+                Module 5: Disabled
+                STOP
 
-    Args:
-        chsh_value (float): Calculated CHSH parameter S.
-        qber (float): Quantum Bit Error Rate (0.0 to 1.0).
-        fidelity (float): Quantum state fidelity (0.0 to 1.0).
-        thresholds (SecurityThresholds): Configured threshold boundaries.
+        Quality Assessment:
+            if Fidelity >= 95% (0.95):
+                Status: 'Quantum Channel Verified' (Verified)
+            else:
+                Status: 'Quantum Channel Degraded' (Degraded)
+
+        Weighted Security Score:
+            Score = 40% * (CHSH / 2.8284 * 100) + 35% * ((1 - QBER) * 100) + 25% * (Fidelity * 100)
+            Clamped strictly to [0, 100].
 
     Returns:
-        Tuple[str, int]: Tuple containing (security_status, security_score).
+        Tuple[str, int, Dict[str, Any]]: (status_string, security_score, decision_metadata)
     """
     abs_s = abs(chsh_value)
 
-    # 1. Determine Security Decision Status
-    if (
-        abs_s > thresholds.CHSH_SECURE and
-        qber <= thresholds.QBER_SECURE and
-        fidelity >= thresholds.FIDELITY_SECURE
-    ):
-        status = "SECURE"
-    elif (
-        abs_s > thresholds.CHSH_WARNING or
-        qber <= thresholds.QBER_WARNING or
-        fidelity >= thresholds.FIDELITY_WARNING
-    ):
-        status = "WARNING"
+    # 1. Gate 1: CHSH Inequality Test (Bell Violation Gatekeeper)
+    if abs_s <= thresholds.CHSH_THRESHOLD:
+        status = "Quantum Channel Rejected"
+        # Score calculation clamped for rejection state
+        score = max(0, min(45, int(round((abs_s / thresholds.CHSH_MAX) * 40.0))))
+        decision_meta = {
+            "gate_1_chsh_pass": False,
+            "gate_2_qber_pass": False,
+            "key_accepted": False,
+            "scada_module_5_enabled": False,
+            "rejection_reason": f"Bell inequality not violated (|S| = {abs_s:.3f} <= 2.0). Quantum entanglement unproven."
+        }
+        logger.warning(f"E91 Gate 1 FAILED: CHSH S = {abs_s:.3f} <= 2.0. Quantum session rejected.")
+        return status, score, decision_meta
+
+    # 2. Gate 2: QBER Error Rate Check (E91 Key Generation Bound)
+    if qber >= thresholds.QBER_WARNING:
+        status = "Quantum Channel Rejected"
+        score = max(0, min(45, int(round(45.0 - qber * 100.0))))
+        decision_meta = {
+            "gate_1_chsh_pass": True,
+            "gate_2_qber_pass": False,
+            "key_accepted": False,
+            "scada_module_5_enabled": False,
+            "rejection_reason": f"QBER error rate ({qber * 100.0:.1f}%) exceeds E91 security bound (11.0%). High eavesdropping risk."
+        }
+        logger.warning(f"E91 Gate 2 FAILED: QBER = {qber * 100.0:.1f}% >= 11.0%. Quantum session rejected.")
+        return status, score, decision_meta
+
+    # 3. Quality Assessment Stage (Fidelity & Scoring)
+    if fidelity >= thresholds.FIDELITY_SECURE:
+        status = "Quantum Channel Verified"
     else:
-        status = "COMPROMISED"
+        status = "Quantum Channel Degraded"
 
-    # 2. Compute Normalized Security Score (0 to 100)
-    chsh_component = min(50.0, (abs_s / 2.8284) * 50.0)
-    qber_component = max(0.0, (1.0 - qber) * 30.0)
-    fidelity_component = max(0.0, min(20.0, fidelity * 20.0))
+    # Compute weighted score: 40% CHSH, 35% QBER, 25% Fidelity
+    chsh_score = min(100.0, (abs_s / thresholds.CHSH_MAX) * 100.0)
+    qber_score = max(0.0, (1.0 - qber) * 100.0)
+    fidelity_score = max(0.0, min(100.0, fidelity * 100.0))
 
-    raw_score = int(round(chsh_component + qber_component + fidelity_component))
-    score = max(0, min(100, raw_score))
+    weighted_score = int(round(0.40 * chsh_score + 0.35 * qber_score + 0.25 * fidelity_score))
+    score = max(0, min(100, weighted_score))
+
+    decision_meta = {
+        "gate_1_chsh_pass": True,
+        "gate_2_qber_pass": True,
+        "key_accepted": True,
+        "scada_module_5_enabled": True,
+        "rejection_reason": None
+    }
 
     logger.info(
-        f"Security Decision Engine evaluated: Status = '{status}', "
-        f"Score = {score}/100 (CHSH={chsh_value:.3f}, QBER={qber*100:.1f}%, Fidelity={fidelity:.3f})."
+        f"E91 Security Decision Engine: Status = '{status}', Score = {score}/100 "
+        f"(CHSH={chsh_value:.3f}, QBER={qber*100:.1f}%, Fidelity={fidelity*100:.1f}%)."
     )
 
-    return status, score
+    return status, score, decision_meta

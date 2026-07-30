@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 from pydantic import BaseModel, Field, ConfigDict
 
 
@@ -24,10 +24,10 @@ class SecurityAnalysisResponse(BaseModel):
     qber: float = Field(..., description="Quantum Bit Error Rate (e.g., 0.021 for 2.1%).")
     fidelity: float = Field(..., description="Estimated quantum state fidelity (0.0 to 1.0).")
     security_score: int = Field(..., description="Normalized security score (0 to 100).")
-    security_status: str = Field(..., description="Security decision ('SECURE', 'WARNING', 'COMPROMISED').")
+    security_status: str = Field(..., description="Security decision.")
     measurement_count: int = Field(..., description="Total measurement shots analyzed.")
     analysis_time_ms: float = Field(..., description="Analysis duration in milliseconds.")
-    bell_correlations: Dict[str, float] = Field(default_factory=dict, description="Bell correlation matrix E(a,b).")
+    bell_correlations: Dict[str, Any] = Field(default_factory=dict, description="Bell correlation matrix E(a,b) and coincidences.")
     report_timestamp: datetime = Field(..., description="Report creation timestamp.")
 
     model_config = ConfigDict(
@@ -73,6 +73,6 @@ class SecurityMetricsResponse(BaseModel):
     qber: float = Field(..., description="Quantum Bit Error Rate.")
     fidelity: float = Field(..., description="State fidelity estimate.")
     bell_test_result: str = Field(..., description="Bell test result ('PASS' or 'FAIL').")
-    bell_correlations: Dict[str, float] = Field(default_factory=dict, description="Bell correlation matrix.")
+    bell_correlations: Dict[str, Any] = Field(default_factory=dict, description="Bell correlation matrix.")
 
     model_config = ConfigDict(from_attributes=True)

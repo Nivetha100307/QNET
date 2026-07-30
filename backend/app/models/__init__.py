@@ -7,6 +7,7 @@ from app.models.scada import SCADAPacket
 from app.models.zero_trust import ZeroTrustAuditLog
 from app.models.repeater import RepeaterNode
 from app.models.cascade import CascadeSession
+from app.models.audit_log import SystemAuditLog
 
 __all__ = [
     "QuantumSession",
@@ -16,5 +17,6 @@ __all__ = [
     "SCADAPacket",
     "ZeroTrustAuditLog",
     "RepeaterNode",
-    "CascadeSession"
+    "CascadeSession",
+    "SystemAuditLog"
 ]

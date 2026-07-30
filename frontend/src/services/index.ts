@@ -6,5 +6,6 @@ export * from './scadaApi';
 export * from './zeroTrustApi';
 export * from './repeaterApi';
 export * from './cascadeApi';
+export * from './auditApi';
 export * from '../core/websocket';
 export * from '../core/EventBus';

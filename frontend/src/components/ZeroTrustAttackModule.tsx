@@ -16,7 +16,6 @@ import {
 
 import { SessionResponse, simulateAttack, AttackSimulationResponse } from '../services';
 
-import { ModuleProgressionBar } from './common/ModuleProgressionBar';
 import { MiniNetworkTopology } from './soc/MiniNetworkTopology';
 import { TrustGauge } from './soc/TrustGauge';
 import { RiskBadge } from './soc/RiskBadge';
@@ -35,28 +34,38 @@ interface ZeroTrustAttackModuleProps {
   onSelectSession: (session: SessionResponse) => void;
 }
 
-const DEFAULT_STAGES: StageInfo[] = [
-  { number: 1, name: 'Identity Verification', category: 'Entity Registry', status: 'WAITING', latencyMs: 12 },
-  { number: 2, name: 'Authentication Check', category: 'HMAC-SHA256', status: 'WAITING', latencyMs: 15 },
-  { number: 3, name: 'RBAC Authorization', category: 'Role Matrix', status: 'WAITING', latencyMs: 8 },
-  { number: 4, name: 'Session Validation', category: 'State Machine', status: 'WAITING', latencyMs: 6 },
-  { number: 5, name: 'Timestamp Freshness', category: 'Drift <= 5s', status: 'WAITING', latencyMs: 5 },
-  { number: 6, name: 'Nonce Uniqueness', category: 'Deduplication Cache', status: 'WAITING', latencyMs: 9 },
-  { number: 7, name: 'Sequence Continuity', category: 'Monotonic Tracker', status: 'WAITING', latencyMs: 7 },
-  { number: 8, name: 'Schema Validation', category: 'Pydantic v2', status: 'WAITING', latencyMs: 14 },
-  { number: 9, name: 'Protocol Version', category: 'E91 Alignment', status: 'WAITING', latencyMs: 4 },
-  { number: 10, name: 'Payload Bounds', category: 'Parameter Bounds', status: 'WAITING', latencyMs: 11 },
-  { number: 11, name: 'Integrity Check', category: 'SHA-256 Bit Match', status: 'WAITING', latencyMs: 18 },
-  { number: 12, name: 'SHA-256 Fingerprint', category: 'Digest Match', status: 'WAITING', latencyMs: 16 },
-  { number: 13, name: 'HMAC Verification', category: 'Constant-Time', status: 'WAITING', latencyMs: 22 },
-  { number: 14, name: 'Audit Logging', category: 'Event Logger', status: 'WAITING', latencyMs: 10 },
-  { number: 15, name: 'Replay Protection', category: 'Cache Verifier', status: 'WAITING', latencyMs: 13 },
-  { number: 16, name: 'Hardware Health', category: 'Substation PLC', status: 'WAITING', latencyMs: 25 },
-  { number: 17, name: 'Security Policy', category: 'Policy Engine', status: 'WAITING', latencyMs: 19 },
-  { number: 18, name: 'Trust Evaluation', category: 'Score >= 50.0', status: 'WAITING', latencyMs: 15 },
-  { number: 19, name: 'Risk Assessment', category: 'Risk Engine', status: 'WAITING', latencyMs: 12 },
-  { number: 20, name: 'Security Decision', category: 'ALLOW / BLOCK', status: 'WAITING', latencyMs: 8 },
-];
+const createDynamicStages = (intensity: number = 1.0): StageInfo[] => {
+  const baseList = [
+    { number: 1, name: 'Identity Verification', category: 'Entity Registry', base: 10 },
+    { number: 2, name: 'Authentication Check', category: 'HMAC-SHA256', base: 12 },
+    { number: 3, name: 'RBAC Authorization', category: 'Role Matrix', base: 6 },
+    { number: 4, name: 'Session Validation', category: 'State Machine', base: 5 },
+    { number: 5, name: 'Timestamp Freshness', category: 'Drift <= 5s', base: 4 },
+    { number: 6, name: 'Nonce Uniqueness', category: 'Deduplication Cache', base: 8 },
+    { number: 7, name: 'Sequence Continuity', category: 'Monotonic Tracker', base: 6 },
+    { number: 8, name: 'Schema Validation', category: 'Pydantic v2', base: 11 },
+    { number: 9, name: 'Protocol Version', category: 'E91 Alignment', base: 3 },
+    { number: 10, name: 'Payload Bounds', category: 'Parameter Bounds', base: 9 },
+    { number: 11, name: 'Integrity Check', category: 'SHA-256 Bit Match', base: 15 },
+    { number: 12, name: 'SHA-256 Fingerprint', category: 'Digest Match', base: 13 },
+    { number: 13, name: 'HMAC Verification', category: 'Constant-Time', base: 18 },
+    { number: 14, name: 'Audit Logging', category: 'Event Logger', base: 8 },
+    { number: 15, name: 'Replay Protection', category: 'Cache Verifier', base: 10 },
+    { number: 16, name: 'Hardware Health', category: 'Substation PLC', base: 20 },
+    { number: 17, name: 'Security Policy', category: 'Policy Engine', base: 15 },
+    { number: 18, name: 'Trust Evaluation', category: 'Score >= 50.0', base: 12 },
+    { number: 19, name: 'Risk Assessment', category: 'Risk Engine', base: 10 },
+    { number: 20, name: 'Security Decision', category: 'ALLOW / BLOCK', base: 6 },
+  ];
+
+  return baseList.map((s) => ({
+    number: s.number,
+    name: s.name,
+    category: s.category,
+    status: 'WAITING',
+    latencyMs: Math.max(3, Math.round((s.base + Math.abs(Math.sin(s.number * 1.5)) * 5) * Math.sqrt(intensity)))
+  }));
+};
 
 export const ZeroTrustAttackModule: React.FC<ZeroTrustAttackModuleProps> = ({
   session,
@@ -70,7 +79,7 @@ export const ZeroTrustAttackModule: React.FC<ZeroTrustAttackModuleProps> = ({
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [activeStageIndex, setActiveStageIndex] = useState<number>(-1);
 
-  const [stages, setStages] = useState<StageInfo[]>(DEFAULT_STAGES);
+  const [stages, setStages] = useState<StageInfo[]>(() => createDynamicStages(1.0));
   const [trustScore, setTrustScore] = useState<number>(98.5);
   const [riskLevel, setRiskLevel] = useState<string>('LOW');
   const [decision, setDecision] = useState<'ALLOW' | 'BLOCK' | 'PENDING'>('PENDING');
@@ -93,7 +102,7 @@ export const ZeroTrustAttackModule: React.FC<ZeroTrustAttackModuleProps> = ({
   const handleLaunchAttack = async () => {
     setIsSimulating(true);
     setDecision('PENDING');
-    setStages(DEFAULT_STAGES.map((s) => ({ ...s, status: 'WAITING' })));
+    setStages(createDynamicStages(attackIntensity));
 
     let targetDecision: 'ALLOW' | 'BLOCK' = 'ALLOW';
     let failedStageNum = -1;
@@ -188,9 +197,6 @@ export const ZeroTrustAttackModule: React.FC<ZeroTrustAttackModuleProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Top-Level Modules 1-8 Stepper Bar */}
-      <ModuleProgressionBar activeTab="module6" onTabChange={() => {}} />
-
       {/* Quantum Context Banner (Modules 3 -> 5 -> 6 Link) */}
       <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3 backdrop-blur-md flex items-center justify-between font-mono text-xs text-slate-300">
         <div className="flex items-center gap-2">

@@ -5,17 +5,17 @@ from app.core.logging_config import logger
 from app.core.websocket_manager import ws_manager
 from app.common.event_types import WSEventType
 
-# Distance matrix between SCADA nodes in kilometers
+# Distance matrix between SCADA nodes in kilometers (Configurable progressive network model)
 SCADA_DISTANCE_MATRIX_KM: Dict[Tuple[str, str], float] = {
     ("Control_Center", "Substation_A"): 15.0,
-    ("Control_Center", "Substation_B"): 28.0,
-    ("Control_Center", "Substation_C"): 42.0,
-    ("Control_Center", "Substation_D"): 65.0,
-    ("Substation_A", "Substation_B"): 18.0,
+    ("Control_Center", "Substation_B"): 30.0,
+    ("Control_Center", "Substation_C"): 50.0,
+    ("Control_Center", "Substation_D"): 80.0,
+    ("Substation_A", "Substation_B"): 15.0,
     ("Substation_A", "Substation_C"): 35.0,
-    ("Substation_A", "Substation_D"): 55.0,
-    ("Substation_B", "Substation_C"): 22.0,
-    ("Substation_B", "Substation_D"): 40.0,
+    ("Substation_A", "Substation_D"): 65.0,
+    ("Substation_B", "Substation_C"): 20.0,
+    ("Substation_B", "Substation_D"): 50.0,
     ("Substation_C", "Substation_D"): 30.0,
 }
 

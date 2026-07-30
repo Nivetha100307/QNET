@@ -37,6 +37,16 @@ async def start_session(
     """
     try:
         session = await service.create_session(request)
+        from app.services.audit_service import audit_service
+        await audit_service.log_event(
+            module_id="MODULE_1_SESSION",
+            action="SESSION_CREATED",
+            severity="INFO",
+            session_uuid=session.session_id,
+            source_node=session.source_node,
+            destination_node=session.destination_node,
+            details={"protocol": session.protocol, "session_type": session.session_type, "status": session.status}
+        )
         return SessionResponse.model_validate(session)
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

@@ -39,22 +39,22 @@ interface SCADAEngineModuleProps {
   onNavigateToModule6?: () => void;
 }
 
-const DEFAULT_LAYERS: SCADALayerInfo[] = [
-  { number: 1, name: 'Operator Identity', category: 'JWT Check', status: 'WAITING', latencyMs: 8 },
-  { number: 2, name: 'RBAC Authorization', category: 'Role Matrix', status: 'WAITING', latencyMs: 6 },
-  { number: 3, name: 'Quantum Key Retrieval', category: 'Module 3 Key', status: 'WAITING', latencyMs: 14 },
-  { number: 4, name: 'HKDF Key Derivation', category: 'SHA-256 Salt', status: 'WAITING', latencyMs: 11 },
-  { number: 5, name: 'AES-256-GCM Encipher', category: 'GCM Cipher', status: 'WAITING', latencyMs: 16 },
-  { number: 6, name: 'GCM Nonce & Tag', category: '96b/128b Tag', status: 'WAITING', latencyMs: 9 },
-  { number: 7, name: 'HMAC Signature', category: 'Constant-Time', status: 'WAITING', latencyMs: 18 },
-  { number: 8, name: 'Replay Protection', category: 'Seq Monotonic', status: 'WAITING', latencyMs: 7 },
-  { number: 9, name: 'Packet Validation', category: 'Pydantic v2', status: 'WAITING', latencyMs: 12 },
-  { number: 10, name: 'Transport Layer ACK', category: 'Reliable Delivery', status: 'WAITING', latencyMs: 22 },
-  { number: 11, name: 'SCADA Safety Rules', category: 'Syntax Check', status: 'WAITING', latencyMs: 10 },
-  { number: 12, name: 'Device Verification', category: 'RTU Online', status: 'WAITING', latencyMs: 15 },
-  { number: 13, name: 'Encrypted Telemetry', category: 'Real-Time Stream', status: 'WAITING', latencyMs: 13 },
-  { number: 14, name: 'Immutable Audit Log', category: 'Event Log', status: 'WAITING', latencyMs: 8 },
-  { number: 15, name: 'Threat Monitor Check', category: 'Anomaly Detection', status: 'WAITING', latencyMs: 11 },
+const createDynamicLayers = (): SCADALayerInfo[] => [
+  { number: 1, name: 'Operator Identity', category: 'JWT Check', status: 'WAITING', latencyMs: Math.round(6 + Math.abs(Math.sin(1.1)) * 4) },
+  { number: 2, name: 'RBAC Authorization', category: 'Role Matrix', status: 'WAITING', latencyMs: Math.round(5 + Math.abs(Math.sin(2.2)) * 3) },
+  { number: 3, name: 'Quantum Key Retrieval', category: 'Module 3 Key', status: 'WAITING', latencyMs: Math.round(11 + Math.abs(Math.sin(3.3)) * 6) },
+  { number: 4, name: 'HKDF Key Derivation', category: 'SHA-256 Salt', status: 'WAITING', latencyMs: Math.round(9 + Math.abs(Math.sin(4.4)) * 4) },
+  { number: 5, name: 'AES-256-GCM Encipher', category: 'GCM Cipher', status: 'WAITING', latencyMs: Math.round(13 + Math.abs(Math.sin(5.5)) * 5) },
+  { number: 6, name: 'GCM Nonce & Tag', category: '96b/128b Tag', status: 'WAITING', latencyMs: Math.round(7 + Math.abs(Math.sin(6.6)) * 4) },
+  { number: 7, name: 'HMAC Signature', category: 'Constant-Time', status: 'WAITING', latencyMs: Math.round(14 + Math.abs(Math.sin(7.7)) * 6) },
+  { number: 8, name: 'Replay Protection', category: 'Seq Monotonic', status: 'WAITING', latencyMs: Math.round(6 + Math.abs(Math.sin(8.8)) * 3) },
+  { number: 9, name: 'Packet Validation', category: 'Pydantic v2', status: 'WAITING', latencyMs: Math.round(10 + Math.abs(Math.sin(9.9)) * 5) },
+  { number: 10, name: 'Transport Layer ACK', category: 'Reliable Delivery', status: 'WAITING', latencyMs: Math.round(16 + Math.abs(Math.sin(10.1)) * 8) },
+  { number: 11, name: 'SCADA Safety Rules', category: 'Syntax Check', status: 'WAITING', latencyMs: Math.round(8 + Math.abs(Math.sin(11.2)) * 4) },
+  { number: 12, name: 'Device Verification', category: 'RTU Online', status: 'WAITING', latencyMs: Math.round(12 + Math.abs(Math.sin(12.3)) * 5) },
+  { number: 13, name: 'Encrypted Telemetry', category: 'Real-Time Stream', status: 'WAITING', latencyMs: Math.round(10 + Math.abs(Math.sin(13.4)) * 5) },
+  { number: 14, name: 'Immutable Audit Log', category: 'Event Log', status: 'WAITING', latencyMs: Math.round(6 + Math.abs(Math.sin(14.5)) * 4) },
+  { number: 15, name: 'Threat Monitor Check', category: 'Anomaly Detection', status: 'WAITING', latencyMs: Math.round(9 + Math.abs(Math.sin(15.6)) * 4) },
 ];
 
 export const SCADAEngineModule: React.FC<SCADAEngineModuleProps> = ({
@@ -77,13 +77,13 @@ export const SCADAEngineModule: React.FC<SCADAEngineModuleProps> = ({
   const [history, setHistory] = useState<SCADAPacketResponse[]>([]);
   const [latestPacket, setLatestPacket] = useState<SCADAPacketResponse | null>(null);
 
-  const [layers, setLayers] = useState<SCADALayerInfo[]>(DEFAULT_LAYERS);
+  const [layers, setLayers] = useState<SCADALayerInfo[]>(createDynamicLayers);
   const [currentLayerIndex, setCurrentLayerIndex] = useState<number>(-1);
   const [commandStepIndex, setCommandStepIndex] = useState<number>(-1);
 
   const [ackReceived, setAckReceived] = useState<boolean>(false);
 
-  // Digital Twin Telemetry State
+  // Digital Twin Telemetry State with Real-Time AC Grid Micro-fluctuations
   const [telemetry, setTelemetry] = useState({
     voltage: 230.4,
     current: 14.2,
@@ -99,6 +99,22 @@ export const SCADAEngineModule: React.FC<SCADAEngineModuleProps> = ({
     { timestamp: new Date().toLocaleTimeString(), label: 'AES Encrypted', latencyMs: 16 },
     { timestamp: new Date().toLocaleTimeString(), label: 'ACK Received', latencyMs: 22 },
   ]);
+
+  // Real-time grid power telemetry simulation interval
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const t = Date.now() / 1000;
+      setTelemetry((prev) => ({
+        ...prev,
+        voltage: parseFloat((230.0 + 1.6 * Math.sin(t / 2.2) + (Math.random() - 0.5) * 0.3).toFixed(1)),
+        current: parseFloat((14.0 + 1.1 * Math.cos(t / 1.7) + (Math.random() - 0.5) * 0.2).toFixed(1)),
+        frequency: parseFloat((60.00 + 0.03 * Math.sin(t / 3.0)).toFixed(2)),
+        temperature: Math.round(34 + 1.2 * Math.sin(t / 8.0)),
+        trustScore: parseFloat((0.97 + 0.02 * Math.cos(t / 4.0)).toFixed(3))
+      }));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -119,7 +135,7 @@ export const SCADAEngineModule: React.FC<SCADAEngineModuleProps> = ({
     setLoading(true);
     setError(null);
     setAckReceived(false);
-    setLayers(DEFAULT_LAYERS.map((l) => ({ ...l, status: 'WAITING' })));
+    setLayers(createDynamicLayers());
 
     // 1. Animate 12 Command Chain Steps
     for (let c = 0; c < 12; c++) {

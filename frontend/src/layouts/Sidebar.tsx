@@ -8,6 +8,7 @@ import {
   ShieldAlert,
   Network,
   Lock,
+  Database,
   LayoutDashboard
 } from 'lucide-react';
 
@@ -26,6 +27,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
     { id: 'module6', label: 'Module 6: Zero-Trust & Attacks', icon: ShieldAlert, badge: '20-Stage' },
     { id: 'module7', label: 'Module 7: Repeaters & Swapping', icon: Network, badge: 'BSM' },
     { id: 'module8', label: 'Module 8: Privacy & Analytics', icon: Lock, badge: 'Cascade' },
+    { id: 'module9', label: 'Module 9: Audit Vault', icon: Database, badge: 'Supabase' },
   ];
 
   return (
@@ -74,7 +76,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
 
       {/* Sidebar Footer */}
       <div className="p-4 border-t border-slate-800 text-[11px] text-slate-500 text-center font-mono">
-        QNetSecure v1.0 • Clean Architecture
+        QNetSecure v1.0 • Supabase Audit Vault
       </div>
     </aside>
   );

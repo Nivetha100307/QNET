@@ -39,6 +39,8 @@ import { SCADAEngineModule } from './SCADAEngineModule';
 import { ZeroTrustAttackModule } from './ZeroTrustAttackModule';
 import { EntanglementSwappingModule } from './EntanglementSwappingModule';
 import { CascadePrivacyModule } from './CascadePrivacyModule';
+import { SystemAuditLogsModule } from './SystemAuditLogsModule';
+import { NodeCommunicationTopology } from './NodeCommunicationTopology';
 
 const NODES = [
   'Control_Center',
@@ -57,6 +59,7 @@ const getInitialTabFromPath = (): string => {
   if (path.includes('module6') || path.includes('zero-trust') || path.includes('attack')) return 'module6';
   if (path.includes('module7') || path.includes('repeater') || path.includes('swapping')) return 'module7';
   if (path.includes('module8') || path.includes('cascade') || path.includes('privacy')) return 'module8';
+  if (path.includes('module9') || path.includes('audit') || path.includes('vault')) return 'module9';
   return 'module1';
 };
 
@@ -97,6 +100,21 @@ export const QuantumSessionManager: React.FC = () => {
       console.error('Failed to load sessions', err);
     }
   };
+
+  // Dynamic real-time node health ping jitter interval
+  useEffect(() => {
+    const pingTimer = setInterval(() => {
+      const t = Date.now() / 1000;
+      setNodeHealth({
+        'Control_Center': { status: 'HEALTHY', ping_ms: parseFloat((1.2 + 0.25 * Math.sin(t * 1.5) + (Math.random() - 0.5) * 0.1).toFixed(1)) },
+        'Substation_A': { status: 'HEALTHY', ping_ms: parseFloat((1.8 + 0.35 * Math.cos(t * 1.2) + (Math.random() - 0.5) * 0.15).toFixed(1)) },
+        'Substation_B': { status: 'HEALTHY', ping_ms: parseFloat((2.4 + 0.40 * Math.sin(t * 1.8) + (Math.random() - 0.5) * 0.2).toFixed(1)) },
+        'Substation_C': { status: 'HEALTHY', ping_ms: parseFloat((3.1 + 0.50 * Math.cos(t * 2.1) + (Math.random() - 0.5) * 0.2).toFixed(1)) },
+        'Substation_D': { status: 'HEALTHY', ping_ms: parseFloat((4.0 + 0.60 * Math.sin(t * 1.1) + (Math.random() - 0.5) * 0.25).toFixed(1)) },
+      });
+    }, 2000);
+    return () => clearInterval(pingTimer);
+  }, []);
 
   useEffect(() => {
     loadSessions();
@@ -284,155 +302,200 @@ export const QuantumSessionManager: React.FC = () => {
 
       {/* Module 1 View */}
       {activeModuleTab === 'module1' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-4 space-y-6">
-            <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-6">
-              <div className="flex items-center gap-2 border-b border-slate-800 pb-4">
-                <Network className="w-5 h-5 text-cyan-400" />
-                <h2 className="text-lg font-semibold text-white">Initialize Secure Session</h2>
-              </div>
-
-              <form onSubmit={handleInitialize} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
-                    Source Node
-                  </label>
-                  <select
-                    value={sourceNode}
-                    onChange={(e) => setSourceNode(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
-                  >
-                    {NODES.map((node) => (
-                      <option key={`src-${node}`} value={node}>{node}</option>
-                    ))}
-                  </select>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Initialize Form */}
+            <div className="lg:col-span-4 space-y-6">
+              <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-6">
+                <div className="flex items-center gap-2 border-b border-slate-800 pb-4">
+                  <Network className="w-5 h-5 text-cyan-400" />
+                  <h2 className="text-lg font-semibold text-white">Initialize Secure Session</h2>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
-                    Destination Node
-                  </label>
-                  <select
-                    value={destNode}
-                    onChange={(e) => setDestNode(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
-                  >
-                    {NODES.map((node) => (
-                      <option key={`dst-${node}`} value={node}>{node}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+                <form onSubmit={handleInitialize} className="space-y-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
-                      Protocol
-                    </label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={protocol}
-                      className="w-full bg-slate-950/50 border border-slate-800 rounded-xl p-3 text-sm font-mono text-cyan-400 cursor-not-allowed"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
-                      Type
+                      Source Node
                     </label>
                     <select
-                      value={sessionType}
-                      onChange={(e) => setSessionType(e.target.value)}
+                      value={sourceNode}
+                      onChange={(e) => setSourceNode(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
                     >
-                      <option value="SIMULATION">SIMULATION</option>
-                      <option value="HARDWARE">HARDWARE</option>
+                      {NODES.map((node) => (
+                        <option key={`src-${node}`} value={node}>{node}</option>
+                      ))}
                     </select>
                   </div>
-                </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2"
-                >
-                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                  Start & Initialize Session
-                </button>
-              </form>
-            </div>
-          </div>
-
-          <div className="lg:col-span-8 space-y-6">
-            {activeSession ? (
-              <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
                   <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs px-2.5 py-1 rounded-md bg-cyan-500/20 text-cyan-300 font-mono border border-cyan-500/30">
-                        {activeSession.session_id}
-                      </span>
-                      <span className="text-xs px-2.5 py-1 rounded-md bg-emerald-500/20 text-emerald-300 font-bold">
-                        {activeSession.status}
-                      </span>
+                    <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
+                      Destination Node
+                    </label>
+                    <select
+                      value={destNode}
+                      onChange={(e) => setDestNode(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
+                    >
+                      {NODES.map((node) => (
+                        <option key={`dst-${node}`} value={node}>{node}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
+                        Protocol
+                      </label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={protocol}
+                        className="w-full bg-slate-950/50 border border-slate-800 rounded-xl p-3 text-sm font-mono text-cyan-400 cursor-not-allowed"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
+                        Type
+                      </label>
+                      <select
+                        value={sessionType}
+                        onChange={(e) => setSessionType(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
+                      >
+                        <option value="SIMULATION">SIMULATION</option>
+                        <option value="HARDWARE">HARDWARE</option>
+                      </select>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {activeSession.status === 'READY' && (
-                      <button
-                        onClick={handleActivate}
-                        disabled={loading}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg transition flex items-center gap-1.5"
-                      >
-                        <Zap className="w-3.5 h-3.5" /> Activate Session
-                      </button>
-                    )}
-                    {activeSession.status !== 'TERMINATED' && (
-                      <button
-                        onClick={handleTerminate}
-                        disabled={loading}
-                        className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl shadow-lg transition flex items-center gap-1.5"
-                      >
-                        <Square className="w-3.5 h-3.5" /> Terminate Session
-                      </button>
-                    )}
-                  </div>
-                </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2"
+                  >
+                    {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                    Start &amp; Initialize Session
+                  </button>
+                </form>
+              </div>
+            </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono text-xs">
-                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-                    <span className="text-slate-500 block text-[10px]">SOURCE NODE</span>
-                    <span className="text-cyan-300 font-bold">{activeSession.source_node}</span>
+            {/* Active Session Overview */}
+            <div className="lg:col-span-8 space-y-6">
+              {activeSession ? (
+                <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs px-2.5 py-1 rounded-md bg-cyan-500/20 text-cyan-300 font-mono border border-cyan-500/30">
+                          {activeSession.session_id}
+                        </span>
+                        <span className="text-xs px-2.5 py-1 rounded-md bg-emerald-500/20 text-emerald-300 font-bold">
+                          {activeSession.status}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {activeSession.status === 'READY' && (
+                        <button
+                          onClick={handleActivate}
+                          disabled={loading}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg transition flex items-center gap-1.5"
+                        >
+                          <Zap className="w-3.5 h-3.5" /> Activate Session
+                        </button>
+                      )}
+                      {activeSession.status !== 'TERMINATED' && (
+                        <button
+                          onClick={handleTerminate}
+                          disabled={loading}
+                          className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl shadow-lg transition flex items-center gap-1.5"
+                        >
+                          <Square className="w-3.5 h-3.5" /> Terminate Session
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-                    <span className="text-slate-500 block text-[10px]">DESTINATION NODE</span>
-                    <span className="text-emerald-300 font-bold">{activeSession.destination_node}</span>
-                  </div>
-                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-                    <span className="text-slate-500 block text-[10px]">MESSAGES DISPATCHED</span>
-                    <span className="text-purple-300 font-bold">{activeSession.message_count}</span>
-                  </div>
-                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-                    <span className="text-slate-500 block text-[10px]">BYTES TRANSFERRED</span>
-                    <span className="text-amber-300 font-bold">{activeSession.bytes_transferred} B</span>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono text-xs">
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                      <span className="text-slate-500 block text-[10px]">SOURCE NODE</span>
+                      <span className="text-cyan-300 font-bold">{activeSession.source_node}</span>
+                    </div>
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                      <span className="text-slate-500 block text-[10px]">DESTINATION NODE</span>
+                      <span className="text-emerald-300 font-bold">{activeSession.destination_node}</span>
+                    </div>
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                      <span className="text-slate-500 block text-[10px]">MESSAGES DISPATCHED</span>
+                      <span className="text-purple-300 font-bold">{activeSession.message_count}</span>
+                    </div>
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                      <span className="text-slate-500 block text-[10px]">BYTES TRANSFERRED</span>
+                      <span className="text-amber-300 font-bold">{activeSession.bytes_transferred} B</span>
+                    </div>
                   </div>
                 </div>
+              ) : (
+                <div className="bg-slate-900/50 p-12 rounded-2xl border border-dashed border-slate-800 text-center space-y-4">
+                  <Network className="w-12 h-12 text-slate-600 mx-auto" />
+                  <h3 className="text-lg font-medium text-slate-300">No Session Selected</h3>
+                  <p className="text-sm text-slate-500 max-w-md mx-auto">
+                    Initialize a new session on the left to start quantum SCADA communications.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* INTERACTIVE NODE-TO-NODE QUANTUM COMMUNICATION TOPOLOGY */}
+          <NodeCommunicationTopology
+            activeSession={activeSession}
+            onSelectNodePair={(src, dst) => {
+              setSourceNode(src);
+              setDestNode(dst);
+            }}
+          />
+
+          {/* SUBSTATION NODE NETWORK HEALTH PING GRID */}
+          <div className="bg-slate-900/80 p-6 rounded-2xl border border-slate-800 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Cpu className="w-5 h-5 text-cyan-400" />
+                <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wide">
+                  Substation Optical Node Latency &amp; Infrastructure Health Pings
+                </h3>
               </div>
-            ) : (
-              <div className="bg-slate-900/50 p-12 rounded-2xl border border-dashed border-slate-800 text-center space-y-4">
-                <Network className="w-12 h-12 text-slate-600 mx-auto" />
-                <h3 className="text-lg font-medium text-slate-300">No Session Selected</h3>
-                <p className="text-sm text-slate-500 max-w-md mx-auto">
-                  Initialize a new session on the left to start quantum SCADA communications.
-                </p>
-              </div>
-            )}
+              <span className="text-xs font-mono text-slate-400">
+                5 Active Quantum Nodes Monitored
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 font-mono text-xs">
+              {Object.entries(nodeHealth).map(([nodeName, data]) => (
+                <div key={nodeName} className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400 font-sans font-semibold uppercase">{nodeName.replace('_', ' ')}</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  </div>
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-cyan-300 font-bold text-sm">{data.ping_ms} ms</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                      {data.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
       {/* Fallback Banner for Modules 2-8 when no session exists */}
-      {activeModuleTab !== 'module1' && !activeSession && (
+      {activeModuleTab !== 'module1' && activeModuleTab !== 'module9' && !activeSession && (
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-12 text-center space-y-4 shadow-xl">
           <Network className="w-12 h-12 text-cyan-400 mx-auto animate-pulse" />
           <h3 className="text-lg font-bold text-slate-100">No Active Quantum Session</h3>
@@ -514,6 +577,15 @@ export const QuantumSessionManager: React.FC = () => {
       {activeModuleTab === 'module8' && activeSession && (
         <CascadePrivacyModule
           session={activeSession}
+          sessionHistory={sessionHistory}
+          onSelectSession={setActiveSession}
+        />
+      )}
+
+      {/* Module 9 View (System Audit Vault) */}
+      {activeModuleTab === 'module9' && (
+        <SystemAuditLogsModule
+          session={activeSession || ({ session_id: 'GLOBAL', status: 'ACTIVE', source_node: 'Control_Center', destination_node: 'Substation_A' } as any)}
           sessionHistory={sessionHistory}
           onSelectSession={setActiveSession}
         />

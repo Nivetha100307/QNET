@@ -21,7 +21,7 @@ class NodeName(str, Enum):
 class ProtocolType(str, Enum):
     """Quantum Key Distribution Protocols."""
     E91 = "E91"
-    BB84 = "BB84"
+    GHZ = "GHZ"
 
 
 class SessionType(str, Enum):

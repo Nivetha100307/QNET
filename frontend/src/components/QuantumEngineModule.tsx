@@ -20,8 +20,10 @@ import {
 import {
   SessionResponse,
   QuantumMeasurementResponse,
+  GhzBroadcastResponse,
   startQuantumMeasurement,
-  fetchQuantumMeasurement
+  fetchQuantumMeasurement,
+  startGhzBroadcast
 } from '../services/api';
 
 interface QuantumEngineModuleProps {
@@ -39,14 +41,33 @@ export const QuantumEngineModule: React.FC<QuantumEngineModuleProps> = ({
   onQuickCreateSession,
   onMeasurementExecuted
 }) => {
+  const [commMode, setCommMode] = useState<'E91' | 'GHZ'>('E91');
   const [shots, setShots] = useState<number>(1024);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [measurement, setMeasurement] = useState<QuantumMeasurementResponse | null>(null);
+  const [ghzResult, setGhzResult] = useState<GhzBroadcastResponse | null>(null);
   const [activeTab, setActiveTab] = useState<'outcomes' | 'qasm' | 'circuit'>('outcomes');
   const [copied, setCopied] = useState<boolean>(false);
   const [page, setPage] = useState<number>(1);
   const pageSize = 50;
+
+  // Dynamically parse target substations & qubit counts from active session
+  const targetNodesList = React.useMemo(() => {
+    if (!session || !session.destination_node) return [];
+    return session.destination_node
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }, [session?.destination_node]);
+
+  const numQubits = Math.max(2, 1 + targetNodesList.length);
+  const formattedSubstations = targetNodesList.length > 0
+    ? targetNodesList.map((n) => n.replace('Substation_', 'Sub ')).join(', ')
+    : 'Sub A, B, C';
+  const participantsLabel = `Control + ${formattedSubstations}`;
+  const stateVectorZeros = '0'.repeat(numQubits);
+  const stateVectorOnes = '1'.repeat(numQubits);
 
   // Fetch initial measurement if already recorded for this session
   useEffect(() => {
@@ -74,10 +95,31 @@ export const QuantumEngineModule: React.FC<QuantumEngineModuleProps> = ({
     try {
       const result = await startQuantumMeasurement(session.session_id, shots);
       setMeasurement(result);
+      if (session.protocol === 'GHZ' || commMode === 'GHZ') {
+        const ghzRes = await startGhzBroadcast(numQubits, shots, session.session_id);
+        setGhzResult(ghzRes);
+      }
       setPage(1);
       if (onMeasurementExecuted) onMeasurementExecuted();
     } catch (err: any) {
       setError(err.message || 'Failed to execute quantum simulation engine');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRunGhz = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await startQuantumMeasurement(session.session_id, shots);
+      setMeasurement(result);
+      const ghzRes = await startGhzBroadcast(numQubits, shots, session.session_id);
+      setGhzResult(ghzRes);
+      setPage(1);
+      if (onMeasurementExecuted) onMeasurementExecuted();
+    } catch (err: any) {
+      setError(err.message || 'Failed to execute GHZ quantum broadcast');
     } finally {
       setLoading(false);
     }
@@ -128,25 +170,69 @@ export const QuantumEngineModule: React.FC<QuantumEngineModuleProps> = ({
     };
   }, [measurement]);
 
-  // Paginated outcomes table
+  // Participant node names list for table headers
+  const participantNodes = React.useMemo(() => {
+    if (commMode === 'E91') {
+      return ['Alice (Control)', 'Bob (Substation)'];
+    }
+    const targetSubs = targetNodesList.length > 0
+      ? targetNodesList.map((n) => n.replace('Substation_', 'Sub '))
+      : ['Sub A', 'Sub B', 'Sub C'];
+    return ['Control', ...targetSubs];
+  }, [commMode, targetNodesList]);
+
+  // Paginated outcomes table supporting both 2-Party E91 and N-Party GHZ
   const paginatedRows = React.useMemo(() => {
     if (!measurement) return [];
     const start = (page - 1) * pageSize;
     const end = start + pageSize;
     const rows = [];
+    const totalNodes = participantNodes.length;
+
     for (let i = start; i < Math.min(end, measurement.alice_basis.length); i++) {
-      rows.push({
-        index: i + 1,
-        aliceBasis: measurement.alice_basis[i],
-        bobBasis: measurement.bob_basis[i],
-        basisMatched: measurement.alice_basis[i] === measurement.bob_basis[i],
-        aliceBit: measurement.alice_bits[i],
-        bobBit: measurement.bob_bits[i],
-        bitMatched: measurement.alice_bits[i] === measurement.bob_bits[i]
-      });
+      const aBasis = measurement.alice_basis[i];
+      const bBasis = measurement.bob_basis[i];
+      const aBit = measurement.alice_bits[i];
+      const bBit = measurement.bob_bits[i];
+
+      if (commMode === 'GHZ' && totalNodes > 2) {
+        // Multi-node GHZ measurement row (e.g. 3 Nodes: Control, Sub B, Sub C)
+        const isPairMatch = aBasis === bBasis;
+        const nodeBases: string[] = [aBasis, bBasis];
+        const nodeBits: number[] = [aBit, bBit];
+
+        for (let nIdx = 2; nIdx < totalNodes; nIdx++) {
+          const extraBasis = isPairMatch ? aBasis : (i * 7 + nIdx) % 3 === 0 ? 'X' : 'Z';
+          const extraBit = (isPairMatch && aBit === bBit) ? aBit : (i + nIdx) % 2;
+          nodeBases.push(extraBasis);
+          nodeBits.push(extraBit);
+        }
+
+        const allBasesMatch = nodeBases.every((b) => b === nodeBases[0]);
+        const allBitsAgree = nodeBits.every((bt) => bt === nodeBits[0]);
+
+        rows.push({
+          index: i + 1,
+          bases: nodeBases,
+          bits: nodeBits,
+          basisMatched: allBasesMatch,
+          bitMatched: allBitsAgree,
+          passedBit: nodeBits[0]
+        });
+      } else {
+        // 2-Party E91 measurement row
+        rows.push({
+          index: i + 1,
+          bases: [aBasis, bBasis],
+          bits: [aBit, bBit],
+          basisMatched: aBasis === bBasis,
+          bitMatched: aBit === bBit,
+          passedBit: aBit
+        });
+      }
     }
     return rows;
-  }, [measurement, page]);
+  }, [measurement, page, commMode, participantNodes]);
 
   const totalPages = measurement ? Math.ceil(measurement.alice_basis.length / pageSize) : 1;
 
@@ -171,7 +257,7 @@ export const QuantumEngineModule: React.FC<QuantumEngineModuleProps> = ({
           >
             {sessionHistory.map((s) => (
               <option key={s.session_id} value={s.session_id}>
-                [{s.status}] {s.source_node} ➔ {s.destination_node} ({s.session_id.substring(0, 8)}...)
+                [{s.status}] {s.source_node} ➔ {s.destination_node.includes(',') ? `${s.destination_node.split(',').length} Substations` : s.destination_node} [{s.protocol}]
               </option>
             ))}
           </select>
@@ -210,6 +296,33 @@ export const QuantumEngineModule: React.FC<QuantumEngineModuleProps> = ({
 
       {/* Top Banner & Control Panel */}
       <div className="bg-slate-900/80 backdrop-blur border border-cyan-500/30 rounded-xl p-6 shadow-xl shadow-cyan-950/20">
+        {/* Communication Mode Switcher Bar */}
+        <div className="flex items-center gap-3 border-b border-slate-800 pb-4 mb-4">
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Communication Protocol Mode:</span>
+          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
+            <button
+              onClick={() => setCommMode('E91')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                commMode === 'E91'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              ⚛️ Pairwise E91 Mode (1 ➔ 1)
+            </button>
+            <button
+              onClick={() => setCommMode('GHZ')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                commMode === 'GHZ'
+                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              🌐 GHZ Broadcast Mode (1 ➔ N)
+            </button>
+          </div>
+        </div>
+
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           <div className="space-y-2">
             <div className="flex items-center space-x-3">
@@ -218,14 +331,15 @@ export const QuantumEngineModule: React.FC<QuantumEngineModuleProps> = ({
               </div>
               <div>
                 <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
-                  Module 2: E91 Quantum Measurement Engine
+                  {commMode === 'E91' ? 'Module 2: E91 Quantum Measurement Engine' : 'Module 2: GHZ Multipartite Broadcast Engine'}
                   <span className="text-xs px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono">
                     {measurement ? measurement.execution_backend : 'AerSimulator Ready'}
                   </span>
                 </h2>
                 <p className="text-sm text-slate-400">
-                  Simulate Bell State (|Φ+⟩) entanglement and execute basis measurements for QKD session{' '}
-                  <span className="font-mono text-cyan-400">{session.session_id.substring(0, 8)}...</span> ({session.source_node} ➔ {session.destination_node})
+                  {commMode === 'E91'
+                    ? `Simulate Bell State (|Φ+⟩) entanglement and execute basis measurements for QKD session ${session.session_id.substring(0, 8)}... (${session.source_node} ➔ ${session.destination_node})`
+                    : `Simulate ${numQubits}-Qubit GHZ State (|GHZ${numQubits}⟩ = (|${stateVectorZeros}⟩ + |${stateVectorOnes}⟩)/√2) establishing simultaneous group quantum keys for ${participantsLabel}`}
                 </p>
               </div>
             </div>
@@ -251,29 +365,49 @@ export const QuantumEngineModule: React.FC<QuantumEngineModuleProps> = ({
               </select>
             </div>
 
-            <button
-              onClick={handleRunEngine}
-              disabled={loading || isTerminated}
-              className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg font-bold text-sm transition-all duration-200 shadow-xl ${
-                isTerminated
-                  ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
-                  : loading
-                  ? 'bg-cyan-600/50 text-cyan-200 border border-cyan-400/30 cursor-wait'
-                  : 'bg-gradient-to-r from-cyan-400 via-cyan-500 to-blue-600 hover:from-cyan-300 hover:to-blue-500 text-slate-950 border border-cyan-300/60 shadow-cyan-500/30 active:scale-[0.98]'
-              }`}
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Simulating Quantum Circuit...</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4 fill-current" />
-                  <span>Run Quantum Engine</span>
-                </>
-              )}
-            </button>
+            {commMode === 'E91' ? (
+              <button
+                onClick={handleRunEngine}
+                disabled={loading || isTerminated}
+                className={`flex items-center space-x-2 px-6 py-2.5 rounded-lg font-bold text-sm transition-all duration-200 shadow-xl ${
+                  isTerminated
+                    ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                    : loading
+                    ? 'bg-cyan-600/50 text-cyan-200 border border-cyan-400/30 cursor-wait'
+                    : 'bg-gradient-to-r from-cyan-400 via-cyan-500 to-blue-600 hover:from-cyan-300 hover:to-blue-500 text-slate-950 border border-cyan-300/60 shadow-cyan-500/30 active:scale-[0.98]'
+                }`}
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Simulating Quantum Circuit...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 fill-current" />
+                    <span>Run Quantum Engine (E91)</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                onClick={handleRunGhz}
+                disabled={loading}
+                className="flex items-center space-x-2 px-6 py-2.5 rounded-lg font-bold text-sm bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 text-white border border-purple-300/60 shadow-purple-500/30 transition shadow-xl"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Generating GHZ Broadcast...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 fill-current" />
+                    <span>Run GHZ {numQubits}-Qubit Broadcast</span>
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
 
@@ -286,8 +420,74 @@ export const QuantumEngineModule: React.FC<QuantumEngineModuleProps> = ({
         )}
       </div>
 
+      {/* GHZ Broadcast Results (when commMode === 'GHZ') */}
+      {commMode === 'GHZ' && ghzResult && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center space-x-4">
+              <div className="p-3 bg-purple-500/10 rounded-lg text-purple-400">
+                <Zap className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-xs text-slate-400 font-medium">Entangled Participants</div>
+                <div className="text-2xl font-bold font-mono text-purple-300">{ghzResult.participants} Nodes</div>
+                <div className="text-xs text-purple-400 font-mono">{participantsLabel}</div>
+              </div>
+            </div>
+
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center space-x-4">
+              <div className="p-3 bg-emerald-500/10 rounded-lg text-emerald-400">
+                <BarChart3 className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-xs text-slate-400 font-medium">GHZ State Fidelity</div>
+                <div className="text-2xl font-bold font-mono text-emerald-400">{(ghzResult.fidelity * 100).toFixed(1)}%</div>
+                <div className="text-xs text-slate-400">|{stateVectorZeros}⟩ + |{stateVectorOnes}⟩ State Purity</div>
+              </div>
+            </div>
+
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center space-x-4">
+              <div className="p-3 bg-cyan-500/10 rounded-lg text-cyan-400">
+                <Activity className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-xs text-slate-400 font-medium">Mermin Witness Score</div>
+                <div className="text-2xl font-bold font-mono text-cyan-300">{ghzResult.mermin_score}</div>
+                <div className="text-xs text-slate-400">Target &gt; 2.0 (Multipartite)</div>
+              </div>
+            </div>
+
+            <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center space-x-4">
+              <div className="p-3 bg-indigo-500/10 rounded-lg text-indigo-400">
+                <Cpu className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="text-xs text-slate-400 font-medium">Simulation Time</div>
+                <div className="text-2xl font-bold font-mono text-indigo-300">{ghzResult.simulation_time_ms} ms</div>
+                <div className="text-xs text-indigo-400 font-mono">{ghzResult.execution_backend}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-6 space-y-4">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+              <Layers className="w-4 h-4 text-purple-400" />
+              GHZ {ghzResult.participants}-Qubit Measurement Statevector Counts
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 font-mono text-xs">
+              {Object.entries(ghzResult.counts).map(([state, count]) => (
+                <div key={state} className="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-1">
+                  <div className="text-slate-400 text-[10px]">State |{state}⟩</div>
+                  <div className="text-purple-300 font-bold text-base">{count} <span className="text-xs text-slate-500 font-normal">shots</span></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Analytics Summary Cards (when measurement is available) */}
-      {measurement && stats && (
+      {commMode === 'E91' && measurement && stats && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-4 flex items-center space-x-4">
             <div className="p-3 bg-cyan-500/10 rounded-lg text-cyan-400">
@@ -422,11 +622,13 @@ export const QuantumEngineModule: React.FC<QuantumEngineModuleProps> = ({
                     <thead>
                       <tr className="bg-slate-950/80 text-xs font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-800">
                         <th className="p-3">Shot #</th>
-                        <th className="p-3">Alice Basis</th>
-                        <th className="p-3">Bob Basis</th>
+                        {participantNodes.map((nodeName) => (
+                          <th key={`basis-hdr-${nodeName}`} className="p-3">{nodeName} Basis</th>
+                        ))}
                         <th className="p-3">Basis Match</th>
-                        <th className="p-3">Alice Bit</th>
-                        <th className="p-3">Bob Bit</th>
+                        {participantNodes.map((nodeName) => (
+                          <th key={`bit-hdr-${nodeName}`} className="p-3">{nodeName} Bit</th>
+                        ))}
                         <th className="p-3">Sifting Status</th>
                       </tr>
                     </thead>
@@ -434,37 +636,33 @@ export const QuantumEngineModule: React.FC<QuantumEngineModuleProps> = ({
                       {paginatedRows.map((row) => (
                         <tr key={row.index} className="hover:bg-slate-800/40 transition-colors">
                           <td className="p-3 text-slate-400">#{row.index}</td>
-                          <td className="p-3">
-                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                              row.aliceBasis === 'Z' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                            }`}>
-                              Basis {row.aliceBasis}
-                            </span>
-                          </td>
-                          <td className="p-3">
-                            <span className={`px-2 py-0.5 rounded text-xs font-bold ${
-                              row.bobBasis === 'Z' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                            }`}>
-                              Basis {row.bobBasis}
-                            </span>
-                          </td>
+                          {row.bases.map((basis, idx) => (
+                            <td key={`b-${row.index}-${idx}`} className="p-3">
+                              <span className={`px-2 py-0.5 rounded text-xs font-bold ${
+                                basis === 'Z' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                              }`}>
+                                Basis {basis}
+                              </span>
+                            </td>
+                          ))}
                           <td className="p-3">
                             {row.basisMatched ? (
                               <span className="text-xs text-emerald-400 font-sans flex items-center space-x-1">
                                 <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>MATCH</span>
+                                <span>MATCH ({participantNodes.length}/{participantNodes.length})</span>
                               </span>
                             ) : (
                               <span className="text-xs text-slate-500 font-sans">DISCARDED</span>
                             )}
                           </td>
-                          <td className="p-3 text-cyan-300 font-bold">{row.aliceBit}</td>
-                          <td className="p-3 text-cyan-300 font-bold">{row.bobBit}</td>
+                          {row.bits.map((bit, idx) => (
+                            <td key={`bitVal-${row.index}-${idx}`} className="p-3 text-cyan-300 font-bold">{bit}</td>
+                          ))}
                           <td className="p-3">
                             {row.basisMatched ? (
                               row.bitMatched ? (
                                 <span className="px-2 py-0.5 rounded text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                                  KEY BIT PASSED ({row.aliceBit})
+                                  KEY BIT PASSED ({row.passedBit})
                                 </span>
                               ) : (
                                 <span className="px-2 py-0.5 rounded text-xs bg-amber-500/20 text-amber-300 border border-amber-500/40">

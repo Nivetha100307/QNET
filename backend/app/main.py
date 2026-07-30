@@ -17,6 +17,7 @@ from app.zero_trust.zero_trust_api import router as zero_trust_router
 from app.repeater.repeater_api import router as repeater_router
 from app.cascade.cascade_api import router as cascade_router
 from app.api.audit_api import router as audit_router
+from app.api.hybrid_api import router as hybrid_router
 from app.api.websocket import router as ws_router
 
 from app.services.telemetry_simulator import telemetry_simulator
@@ -68,6 +69,7 @@ app.include_router(zero_trust_router, prefix=settings.API_V1_STR)
 app.include_router(repeater_router, prefix=settings.API_V1_STR)
 app.include_router(cascade_router, prefix=settings.API_V1_STR)
 app.include_router(audit_router, prefix=settings.API_V1_STR)
+app.include_router(hybrid_router, prefix=settings.API_V1_STR)
 app.include_router(ws_router, prefix=settings.API_V1_STR)
 
 

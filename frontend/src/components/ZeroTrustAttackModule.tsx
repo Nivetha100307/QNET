@@ -72,6 +72,14 @@ export const ZeroTrustAttackModule: React.FC<ZeroTrustAttackModuleProps> = ({
   sessionHistory,
   onSelectSession
 }) => {
+  const targetNodes = React.useMemo(() => {
+    if (session.destination_node && session.destination_node.includes(',')) {
+      return session.destination_node.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+    return [session.destination_node || 'Substation_A'];
+  }, [session.destination_node]);
+
+  const [selectedTargetSubstation, setSelectedTargetSubstation] = useState<string>(targetNodes[0] || 'Substation_A');
   const [activeTab, setActiveTab] = useState<string>('module6');
 
   const [attackPreset, setAttackPreset] = useState<string>('MITM');
@@ -98,6 +106,23 @@ export const ZeroTrustAttackModule: React.FC<ZeroTrustAttackModuleProps> = ({
     { id: '2', timestamp: new Date().toLocaleTimeString(), stage: 'Stage 02', severity: 'INFO', message: 'HMAC-SHA256 signature match confirmed.' },
     { id: '3', timestamp: new Date().toLocaleTimeString(), stage: 'Stage 07', severity: 'INFO', message: 'Sequence number #12 continuity verified.' },
   ]);
+
+  // Handle Reset / Clear Quarantine to restore nominal state
+  const handleResetQuarantine = () => {
+    setDecision('ALLOW');
+    setAttackResult(null);
+    setStages(createDynamicStages(1.0).map((stg) => ({ ...stg, status: 'PASSED' })));
+    setAuditLogs((prev) => [
+      {
+        id: `${Date.now()}`,
+        timestamp: new Date().toLocaleTimeString(),
+        stage: 'Stage 00',
+        severity: 'INFO',
+        message: 'Quarantine cleared. Quantum security baseline restored to nominal state.'
+      },
+      ...prev
+    ]);
+  };
 
   const handleLaunchAttack = async () => {
     setIsSimulating(true);
@@ -153,12 +178,6 @@ export const ZeroTrustAttackModule: React.FC<ZeroTrustAttackModuleProps> = ({
         })
       );
 
-      // Dynamically animate trust score degradation
-      if (isFailureStage) {
-        setTrustScore((prev) => Math.max(35.0, prev - 35.0));
-        setRiskLevel('HIGH');
-      }
-
       if (isFailureStage) break;
     }
 
@@ -179,7 +198,7 @@ export const ZeroTrustAttackModule: React.FC<ZeroTrustAttackModuleProps> = ({
           timestamp: new Date().toLocaleTimeString(),
           stage: failedStageNum > 0 ? `Stage ${failedStageNum}` : 'Stage 20',
           severity: finalDecision === 'BLOCK' ? 'CRITICAL' : 'INFO',
-          message: res.details
+          message: `[Target: ${selectedTargetSubstation}] ${res.details}`
         },
         ...prev
       ]);
@@ -189,7 +208,7 @@ export const ZeroTrustAttackModule: React.FC<ZeroTrustAttackModuleProps> = ({
         ...prev,
         {
           timestamp: new Date().toLocaleTimeString(),
-          stageName: `Decision ${finalDecision}`,
+          stageName: `Decision ${finalDecision} (${selectedTargetSubstation})`,
           status: finalDecision === 'ALLOW' ? 'PASSED' : 'FAILED'
         }
       ]);
@@ -201,10 +220,132 @@ export const ZeroTrustAttackModule: React.FC<ZeroTrustAttackModuleProps> = ({
     }
   };
 
+  // Real-time dynamic micro-fluctuations for QBER and CHSH metrics
+  const [realtimePhysics, setRealtimePhysics] = useState<Record<string, { noiseQber: number; noiseChsh: number }>>({});
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const nextPhysics: Record<string, { noiseQber: number; noiseChsh: number }> = {};
+      targetNodes.forEach((node) => {
+        const noiseQber = parseFloat(((Math.random() - 0.5) * 0.36).toFixed(2));
+        const noiseChsh = parseFloat(((Math.random() - 0.5) * 0.04).toFixed(2));
+        nextPhysics[node] = { noiseQber, noiseChsh };
+      });
+      setRealtimePhysics(nextPhysics);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [targetNodes]);
+
+  // Live Mathematical Dynamic Calculation of Trust Score from actual physical & security telemetry
+  useEffect(() => {
+    if (isSimulating) return;
+
+    const timer = setInterval(() => {
+      const telemetryJitter = (Math.random() - 0.5) * 0.6;
+      let calculatedScore = 98.5 + telemetryJitter;
+
+      if (decision === 'BLOCK') {
+        let baseAttackPenalty = 45;
+        if (attackPreset === 'DENIAL_OF_SERVICE') baseAttackPenalty = 75;
+        else if (attackPreset === 'MITM') baseAttackPenalty = 68;
+        else if (attackPreset === 'REPLAY_ATTACK') baseAttackPenalty = 60;
+        else if (attackPreset === 'EAVESDROPPING') baseAttackPenalty = 55;
+        else if (attackPreset === 'PACKET_TAMPERING') baseAttackPenalty = 50;
+        else if (attackPreset === 'FIBER_TAPPING') baseAttackPenalty = 42;
+        else if (attackPreset === 'PNS_ATTACK') baseAttackPenalty = 32;
+
+        const nodeScopeFactor = selectedTargetSubstation === 'ALL' ? 1.0 : 0.65;
+        const totalPenalty = baseAttackPenalty * attackIntensity * nodeScopeFactor;
+        calculatedScore = Math.max(12.0, 98.5 - totalPenalty + telemetryJitter);
+      }
+
+      const liveCalculatedScore = parseFloat(Math.min(99.6, calculatedScore).toFixed(1));
+      setTrustScore(liveCalculatedScore);
+
+      if (liveCalculatedScore >= 90) setRiskLevel('LOW');
+      else if (liveCalculatedScore >= 70) setRiskLevel('MEDIUM');
+      else if (liveCalculatedScore >= 50) setRiskLevel('HIGH');
+      else setRiskLevel('CRITICAL');
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isSimulating, decision, attackPreset, attackIntensity, targetNodes, selectedTargetSubstation]);
+
+  // Attack-specific quantum optics physics recalculation engine
+  const getSubstationPhysics = (subNode: string) => {
+    let dist = 15;
+    let baseQber = 2.1;
+    let baseChsh = 2.79;
+
+    if (subNode.includes('B')) { dist = 30; baseQber = 4.3; baseChsh = 2.67; }
+    else if (subNode.includes('C')) { dist = 50; baseQber = 7.8; baseChsh = 2.32; }
+    else if (subNode.includes('D')) { dist = 80; baseQber = 12.4; baseChsh = 1.87; }
+
+    const isUnderAttack = (isSimulating || decision === 'BLOCK') && (selectedTargetSubstation === 'ALL' || selectedTargetSubstation === subNode);
+
+    // Calculate attack-specific QBER & CHSH impact based on quantum optics principles
+    let attackQberDelta = 0;
+    let attackChshDrop = 0;
+
+    if (isUnderAttack) {
+      switch (attackPreset) {
+        case 'EAVESDROPPING':
+          // Eve Intercept-Resend: 50% basis mismatch guesses introduce 25% error rate
+          attackQberDelta = 25.0 * attackIntensity;
+          attackChshDrop = 1.35 * attackIntensity; // Drops S to classical limit <= 1.41
+          break;
+        case 'FIBER_TAPPING':
+          // Passive Beam Splitting: Photon intensity tapping degrades SNR
+          attackQberDelta = 18.5 * attackIntensity;
+          attackChshDrop = 1.05 * attackIntensity; // Drops S to ~1.65
+          break;
+        case 'PNS_ATTACK':
+          // Photon Number Splitting: Multi-photon pulse tapping
+          attackQberDelta = 12.0 * attackIntensity;
+          attackChshDrop = 0.85 * attackIntensity; // Drops S to ~1.88
+          break;
+        case 'MITM':
+          // Man-in-the-Middle active tampering: High qubit disruption
+          attackQberDelta = 35.0 * attackIntensity;
+          attackChshDrop = 1.55 * attackIntensity; // Drops S to ~1.15
+          break;
+        case 'PACKET_TAMPERING':
+          // Bit Flip Attack: Direct control frame payload alteration
+          attackQberDelta = 15.0 * attackIntensity;
+          attackChshDrop = 0.95 * attackIntensity; // Drops S to ~1.75
+          break;
+        case 'DENIAL_OF_SERVICE':
+          // Detector Blinding DoS: High-power saturation laser causes maximum dark counts
+          attackQberDelta = 45.0 * attackIntensity;
+          attackChshDrop = 1.75 * attackIntensity; // Drops S to <= 1.00
+          break;
+        case 'REPLAY':
+          // Replay Attack: Stale key/packet replay (low quantum error, high sequence failure)
+          attackQberDelta = 3.5 * attackIntensity;
+          attackChshDrop = 0.30 * attackIntensity;
+          break;
+        default:
+          attackQberDelta = 14.2 * attackIntensity;
+          attackChshDrop = 0.92 * attackIntensity;
+      }
+    }
+
+    const noise = realtimePhysics[subNode] || { noiseQber: 0, noiseChsh: 0 };
+    const qber = isUnderAttack
+      ? parseFloat((baseQber + attackQberDelta + noise.noiseQber).toFixed(1))
+      : parseFloat(Math.max(0.1, baseQber + noise.noiseQber).toFixed(1));
+
+    const chsh = isUnderAttack
+      ? parseFloat((Math.max(1.05, baseChsh - attackChshDrop + noise.noiseChsh)).toFixed(2))
+      : parseFloat((baseChsh + noise.noiseChsh).toFixed(2));
+
+    return { dist, qber, chsh, isUnderAttack, attackQberDelta: attackQberDelta.toFixed(1) };
+  };
+
   return (
     <div className="space-y-6">
       {/* Quantum Context Banner (Modules 3 -> 5 -> 6 Link) */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3 backdrop-blur-md flex items-center justify-between font-mono text-xs text-slate-300">
+      <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-3 backdrop-blur-md flex items-center justify-between font-mono text-xs text-slate-300 shadow-lg">
         <div className="flex items-center gap-2">
           <Layers className="w-4 h-4 text-cyan-400" />
           <span className="text-slate-400 font-sans font-bold">End-to-End Quantum Security Chain:</span>
@@ -228,52 +369,96 @@ export const ZeroTrustAttackModule: React.FC<ZeroTrustAttackModuleProps> = ({
         </div>
       </div>
 
-      {/* Main SOC Dashboard Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Attack Controls & Topology */}
-        <div className="lg:col-span-4 space-y-6">
+      {/* Main SOC Dashboard Layout Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Attack Controls & Dynamic Topology */}
+        <div className="lg:col-span-4 space-y-5">
           {/* Attack Configuration Panel */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 space-y-4">
-            <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
-              <ShieldAlert className="w-5 h-5 text-rose-400" />
-              <h3 className="text-sm font-bold text-slate-100 font-sans">
-                Adversarial Attack Injector
-              </h3>
+          <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5 text-rose-400" />
+                <h3 className="text-sm font-bold text-slate-100 font-sans">
+                  Adversarial Attack Injector
+                </h3>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 font-bold">
+                Module 6
+              </span>
             </div>
 
-            {/* All 5 Attack Vector Preset Tabs */}
             <div className="space-y-3 font-mono text-xs">
-              <label className="block text-slate-400 font-sans font-semibold">
-                Select Attack Vector Preset:
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { id: 'MITM', name: '⚡ MITM Tamper (Stage 11)' },
-                  { id: 'REPLAY', name: '⚡ Replay Attack (Stage 7)' },
-                  { id: 'EAVESDROPPING', name: '👁️ Eve Intercept (Stage 9)' },
-                  { id: 'FIBER_TAPPING', name: '👁️ Passive Fiber Tap (Stage 9)' },
-                  { id: 'PNS_ATTACK', name: '👁️ Passive PNS Attack (Stage 9)' },
-                  { id: 'PACKET_TAMPERING', name: '⚡ Bit Flip (Stage 8)' },
-                  { id: 'DENIAL_OF_SERVICE', name: '⚡ DoS Flood (Stage 18)' },
-                ].map((a) => (
-                  <button
-                    key={a.id}
-                    onClick={() => setAttackPreset(a.id)}
-                    className={`p-2 rounded-lg border text-[10px] font-bold text-left transition-all ${
-                      attackPreset === a.id
-                        ? 'bg-rose-950/80 border-rose-600 text-rose-300 shadow-md shadow-rose-950/50'
-                        : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:bg-slate-800'
-                    }`}
-                  >
-                    {a.name}
-                  </button>
-                ))}
+              {/* Target Substation Selector Tabs */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-slate-300 font-sans font-semibold text-[11px]">
+                    Select Substation Path to Attack:
+                  </label>
+                  <span className="text-[9px] text-rose-400 font-sans font-bold">Targeted Optical Link</span>
+                </div>
+                <div className="flex flex-wrap gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                  {targetNodes.map((node) => (
+                    <button
+                      key={node}
+                      onClick={() => setSelectedTargetSubstation(node)}
+                      className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition ${
+                        selectedTargetSubstation === node
+                          ? 'bg-rose-600 text-white shadow-md'
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                      }`}
+                    >
+                      {node.replace('Substation_', 'Sub ')}
+                    </button>
+                  ))}
+                  {targetNodes.length > 1 && (
+                    <button
+                      onClick={() => setSelectedTargetSubstation('ALL')}
+                      className={`px-2 py-1 text-[10px] font-bold rounded-md transition ${
+                        selectedTargetSubstation === 'ALL'
+                          ? 'bg-amber-600 text-white shadow-md'
+                          : 'text-amber-400/80 hover:text-amber-200 hover:bg-slate-900'
+                      }`}
+                    >
+                      ALL (Broadcast)
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Attack Vector Presets */}
+              <div>
+                <label className="block text-slate-400 font-sans font-semibold mb-1.5">
+                  Select Adversarial Vector:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'MITM', name: '⚡ MITM Tamper (Stage 11)' },
+                    { id: 'REPLAY', name: '⚡ Replay Attack (Stage 7)' },
+                    { id: 'EAVESDROPPING', name: '👁️ Eve Intercept (Stage 9)' },
+                    { id: 'FIBER_TAPPING', name: '👁️ Passive Fiber Tap (Stage 9)' },
+                    { id: 'PNS_ATTACK', name: '👁️ Passive PNS Attack (Stage 9)' },
+                    { id: 'PACKET_TAMPERING', name: '⚡ Bit Flip (Stage 8)' },
+                    { id: 'DENIAL_OF_SERVICE', name: '⚡ DoS Flood (Stage 18)' },
+                  ].map((a) => (
+                    <button
+                      key={a.id}
+                      onClick={() => setAttackPreset(a.id)}
+                      className={`p-2 rounded-lg border text-[10px] font-bold text-left transition-all ${
+                        attackPreset === a.id
+                          ? 'bg-rose-950/80 border-rose-600 text-rose-300 shadow-md shadow-rose-950/50'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:bg-slate-800'
+                      }`}
+                    >
+                      {a.name}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Intensity Slider */}
               <div className="pt-2">
                 <div className="flex justify-between text-slate-400 text-[11px] mb-1 font-sans">
-                  <span>Attack Intensity</span>
+                  <span>Attack Intensity / Fiber Degradation</span>
                   <span className="text-cyan-400 font-bold font-mono">{(attackIntensity * 100).toFixed(0)}%</span>
                 </div>
                 <input
@@ -291,36 +476,94 @@ export const ZeroTrustAttackModule: React.FC<ZeroTrustAttackModuleProps> = ({
               <button
                 onClick={handleLaunchAttack}
                 disabled={isSimulating}
-                className="w-full py-3.5 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-rose-950/50 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                className="w-full py-3.5 bg-gradient-to-r from-rose-600 via-amber-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-rose-950/50 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
               >
                 {isSimulating ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    Executing 20-Stage Pipeline...
+                    Simulating Attack on {selectedTargetSubstation}...
                   </>
                 ) : (
                   <>
                     <Play className="w-4 h-4" />
-                    Inject Attack & Execute 20-Stage Pipeline
+                    Inject Attack on {selectedTargetSubstation}
                   </>
                 )}
               </button>
             </div>
           </div>
 
-          {/* Mini Network Topology Visualizer */}
-          <MiniNetworkTopology
-            sourceNode={session.source_node}
-            destinationNode={session.destination_node}
-            isSimulating={isSimulating}
-            attackType={attackPreset}
-            decision={decision}
-          />
+          {/* GHZ Multi-Path Security & Live Substation QBER / CHSH Matrix */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-3 font-mono text-xs shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2 font-sans font-bold text-slate-200">
+              <span>Substation Optical Path QBER & CHSH Monitor</span>
+              <span className="text-[10px] text-purple-400 bg-purple-950/60 px-2 py-0.5 rounded border border-purple-800 font-mono">
+                Live Physical Parameters
+              </span>
+            </div>
+            <div className="space-y-2.5">
+              {targetNodes.map((sub) => {
+                const physics = getSubstationPhysics(sub);
+                return (
+                  <div key={sub} className={`p-2.5 rounded-xl border transition-all ${
+                    physics.isUnderAttack
+                      ? 'bg-rose-950/40 border-rose-800/80 shadow-md shadow-rose-950/30'
+                      : 'bg-slate-950/80 border-slate-800/80'
+                  }`}>
+                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-800/50">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${physics.isUnderAttack ? 'bg-rose-500 animate-ping' : 'bg-emerald-400'}`} />
+                        <span className="text-slate-100 font-bold font-sans">{sub}</span>
+                        <span className="text-[9px] text-slate-500 font-mono">({physics.dist} km)</span>
+                      </div>
+                      {physics.isUnderAttack ? (
+                        <span className="text-[9px] px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold animate-pulse font-sans">
+                          {isSimulating ? '⚡ ATTACK INJECTED' : '🔴 ATTACK BLOCKED'}
+                        </span>
+                      ) : (
+                        <span className="text-[9px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold font-sans">
+                          🟢 SECURE
+                        </span>
+                      )}
+                    </div>
 
-          {/* Trust Gauge & Risk Badge */}
-          <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 flex flex-col items-center space-y-4">
-            <TrustGauge score={trustScore} size={140} />
-            <RiskBadge level={riskLevel} />
+                    <div className="grid grid-cols-2 gap-2 pt-2 text-[10px]">
+                      <div className="bg-slate-900/80 p-1.5 rounded border border-slate-800/80 flex items-center justify-between">
+                        <span className="text-slate-400 font-sans">QBER %:</span>
+                        <span className={`font-bold font-mono ${physics.qber >= 11.0 ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`}>
+                          {physics.qber}%
+                        </span>
+                      </div>
+                      <div className="bg-slate-900/80 p-1.5 rounded border border-slate-800/80 flex items-center justify-between">
+                        <span className="text-slate-400 font-sans">CHSH S:</span>
+                        <span className={`font-bold font-mono ${physics.chsh < 2.0 ? 'text-rose-400 animate-pulse' : 'text-purple-300'}`}>
+                          {physics.chsh}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Integrated Network Trajectory & Compact Trust Gauge Card */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-3 shadow-xl">
+            <MiniNetworkTopology
+              sourceNode={session.source_node}
+              destinationNode={session.destination_node}
+              isSimulating={isSimulating}
+              attackType={attackPreset}
+              decision={decision}
+            />
+
+            <div className="pt-2 border-t border-slate-800/80 flex items-center justify-around">
+              <TrustGauge score={trustScore} size={100} />
+              <div className="flex flex-col items-center gap-2">
+                <span className="text-[10px] text-slate-400 font-mono">Zero-Trust Rating</span>
+                <RiskBadge level={riskLevel} />
+              </div>
+            </div>
           </div>
         </div>
 

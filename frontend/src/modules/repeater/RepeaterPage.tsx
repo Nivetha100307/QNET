@@ -199,15 +199,17 @@ export const RepeaterPage: React.FC<RepeaterPageProps> = ({ session }) => {
 
     // Step 4: Swap at Repeater R3 -> End-to-End!
     setStage('END_TO_END');
+    const targetDest = session?.destination_node || 'Substations';
+    const targetSrc = session?.source_node || 'Control_Center';
     try {
       const res3 = await executeEntanglementSwapping({
         session_uuid: session?.session_id || 'sim-session',
         repeater_node: 'Repeater_R3',
-        source_node: 'Control_Center',
-        destination_node: 'Substation_A'
+        source_node: targetSrc,
+        destination_node: targetDest
       });
       setLastSwap(res3);
-      addEvent('End-to-End Entanglement Established', `Direct Quantum Channel active between Control Center and Substation A. Ready for Module 3 Key Generation.`);
+      addEvent('End-to-End Entanglement Established', `Direct Quantum Channel active between ${targetSrc.replace(/_/g, ' ')} and ${targetDest.replace(/_/g, ' ')}. Ready for Module 3 Key Generation.`);
     } catch (err) {}
 
     setIsRunning(false);
@@ -240,7 +242,7 @@ export const RepeaterPage: React.FC<RepeaterPageProps> = ({ session }) => {
   return (
     <div className="space-y-8">
       {/* SECTION A: Module Objective & System Architecture Integration */}
-      <IntegrationBanner />
+      <IntegrationBanner session={session} />
 
       {/* SECTION B: Why Quantum Repeaters (Real-Time Dynamic Math) */}
       <WhyRepeatersPanel distanceKm={distanceKm} noiseEnabled={noiseEnabled} />
@@ -267,6 +269,8 @@ export const RepeaterPage: React.FC<RepeaterPageProps> = ({ session }) => {
           nodes={mesh.quantum_repeaters}
           stage={stage}
           distanceKm={distanceKm}
+          sourceNode={session?.source_node}
+          destinationNode={session?.destination_node}
         />
       )}
 

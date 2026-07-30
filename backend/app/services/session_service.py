@@ -50,50 +50,52 @@ class SessionService:
 
     async def create_session(self, request: SessionCreateRequest) -> QuantumSession:
         """Initializes a new secure quantum session between two SCADA nodes."""
-        if request.source_node.value == request.destination_node.value:
+        src_val = getattr(request.source_node, 'value', request.source_node)
+        dst_val = getattr(request.destination_node, 'value', request.destination_node)
+
+        if src_val == dst_val:
             raise ValueError("Destination node cannot be identical to source node.")
 
         existing = await self.repository.find_active_between_nodes(
-            request.source_node.value, 
-            request.destination_node.value
+            src_val, 
+            dst_val
         )
         if existing:
             raise DuplicateActiveSessionError(
                 f"An active session ({existing.session_id}) already exists between "
-                f"'{request.source_node.value}' and '{request.destination_node.value}'."
+                f"'{src_val}' and '{dst_val}'."
             )
 
         session_id = str(uuid.uuid4())
         
-        quantum_channel = generate_dynamic_quantum_channel(request.source_node.value, request.destination_node.value)
-        classical_channel = generate_dynamic_classical_channel(request.source_node.value, request.destination_node.value)
+        quantum_channel = generate_dynamic_quantum_channel(src_val, dst_val)
+        classical_channel = generate_dynamic_classical_channel(src_val, dst_val)
         
         node_health_map = generate_dynamic_node_health()
         node_status = {
-            request.source_node.value: node_health_map.get(request.source_node.value, {}).get("status", "HEALTHY"),
-            request.destination_node.value: node_health_map.get(request.destination_node.value, {}).get("status", "HEALTHY")
+            src_val: node_health_map.get(src_val, {}).get("status", "HEALTHY"),
+            dst_val: node_health_map.get(dst_val, {}).get("status", "HEALTHY")
         }
         
-        route = [request.source_node.value, request.destination_node.value]
+        route = [src_val, dst_val]
         
         timeline = [
             self._create_timeline_event(WSEventType.SESSION_CREATED.value, SessionStatus.INITIALIZING.value, "Session initialized"),
             self._create_timeline_event("QUANTUM_CHANNEL_INITIALIZED", SessionStatus.INITIALIZING.value, f"Quantum channel status: CONNECTED ({quantum_channel['latency_ms']} ms)"),
             self._create_timeline_event("CLASSICAL_CHANNEL_INITIALIZED", SessionStatus.INITIALIZING.value, f"Classical channel status: CONNECTED ({classical_channel['latency_ms']} ms)"),
+            self._create_timeline_event(WSEventType.SESSION_READY.value, SessionStatus.READY.value, "Session ready for key distribution")
         ]
 
         # Initial FSM state: IDLE -> INITIALIZING -> READY
         SessionStateMachine.validate_transition(SessionStatus.IDLE, SessionStatus.INITIALIZING)
         SessionStateMachine.validate_transition(SessionStatus.INITIALIZING, SessionStatus.READY)
 
-        timeline.append(self._create_timeline_event(WSEventType.SESSION_READY.value, SessionStatus.READY.value, "Session ready for key distribution"))
-
         session = QuantumSession(
             session_id=session_id,
-            source_node=request.source_node.value,
-            destination_node=request.destination_node.value,
-            protocol=request.protocol.value,
-            session_type=request.session_type.value,
+            source_node=src_val,
+            destination_node=dst_val,
+            protocol=getattr(request.protocol, 'value', request.protocol),
+            session_type=getattr(request.session_type, 'value', request.session_type),
             status=SessionStatus.READY.value,
             route=route,
             quantum_channel=quantum_channel,

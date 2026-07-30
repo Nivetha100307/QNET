@@ -16,7 +16,13 @@ export async function apiRequest<T>(endpoint: string, options: RequestInit = {})
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ detail: response.statusText }));
-    throw new Error(errorData.detail || `HTTP Error ${response.status}`);
+    let detailMsg = errorData.detail;
+    if (Array.isArray(detailMsg)) {
+      detailMsg = detailMsg.map((e: any) => e.msg || (typeof e === 'object' ? JSON.stringify(e) : String(e))).join(', ');
+    } else if (typeof detailMsg === 'object' && detailMsg !== null) {
+      detailMsg = JSON.stringify(detailMsg);
+    }
+    throw new Error(detailMsg || `HTTP Error ${response.status}`);
   }
 
   return response.json();

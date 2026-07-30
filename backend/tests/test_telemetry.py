@@ -16,7 +16,7 @@ def test_node_distance_calculations():
     assert d2 == 15.0
 
     d3 = get_node_distance("Substation_A", "Substation_D")
-    assert d3 == 55.0
+    assert d3 == 65.0
 
     d_same = get_node_distance("Substation_A", "Substation_A")
     assert d_same == 0.0

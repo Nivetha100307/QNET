@@ -8,22 +8,33 @@ interface QuantumNetworkTopologyProps {
   nodes: RepeaterNodeInfo[];
   stage: 'INITIAL' | 'BELL_PAIRS' | 'SWAP_R1' | 'SWAP_R2' | 'SWAP_R3' | 'END_TO_END';
   distanceKm: number;
+  sourceNode?: string;
+  destinationNode?: string;
 }
 
 export const QuantumNetworkTopology: React.FC<QuantumNetworkTopologyProps> = ({
   nodes,
   stage,
-  distanceKm
+  distanceKm,
+  sourceNode,
+  destinationNode
 }) => {
   const hopDist = (distanceKm / 4).toFixed(0);
 
+  const srcLabel = sourceNode ? sourceNode.replace(/_/g, ' ') : 'Control Center';
+  const destLabel = destinationNode
+    ? destinationNode.includes(',')
+      ? `${destinationNode.split(',').length} Substations (${destinationNode.replace(/Substation_/g, 'Sub ')})`
+      : destinationNode.replace(/_/g, ' ')
+    : 'Substation A';
+
   // Define 5 horizontal node positions for SVG linking
   const nodeCoords = [
-    { id: 'Control_Center', label: 'Control Center', x: 90, y: 75, type: 'SOURCE' },
+    { id: 'Control_Center', label: srcLabel, x: 90, y: 75, type: 'SOURCE' },
     { id: 'Repeater_R1', label: 'Repeater R1', x: 285, y: 75, type: 'REPEATER' },
     { id: 'Repeater_R2', label: 'Repeater R2', x: 480, y: 75, type: 'REPEATER' },
     { id: 'Repeater_R3', label: 'Repeater R3', x: 675, y: 75, type: 'REPEATER' },
-    { id: 'Substation_A', label: 'Substation A', x: 870, y: 75, type: 'DESTINATION' }
+    { id: 'Destination', label: destLabel, x: 870, y: 75, type: 'DESTINATION' }
   ];
 
   const getLinkStatus = (linkIdx: number): 'IDLE' | 'ACTIVE' | 'SWAPPED' | 'DIMMED' => {

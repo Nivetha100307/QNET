@@ -9,17 +9,16 @@ export const TrustGauge: React.FC<TrustGaugeProps> = ({ score, size = 120 }) => 
   const [displayScore, setDisplayScore] = useState<number>(100);
 
   useEffect(() => {
-    // Smooth step-by-step trust degradation/recovery animation
+    // Smooth exponential step interpolation toward target score
     const interval = setInterval(() => {
       setDisplayScore((prev) => {
-        if (prev === score) {
-          clearInterval(interval);
+        const diff = score - prev;
+        if (Math.abs(diff) < 0.1) {
           return score;
         }
-        const delta = prev < score ? 1 : -1;
-        return prev + delta;
+        return prev + diff * 0.15;
       });
-    }, 20);
+    }, 25);
 
     return () => clearInterval(interval);
   }, [score]);
@@ -67,7 +66,7 @@ export const TrustGauge: React.FC<TrustGaugeProps> = ({ score, size = 120 }) => 
       </svg>
       <div className="absolute flex flex-col items-center justify-center">
         <span className={`text-2xl font-extrabold font-mono ${textClass}`}>
-          {displayScore.toFixed(0)}
+          {displayScore.toFixed(1)}
         </span>
         <span className="text-[9px] uppercase tracking-wider text-slate-500 font-mono">
           Trust Score

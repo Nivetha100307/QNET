@@ -119,3 +119,44 @@ async def get_quantum_circuit(
         }
     except QuantumMeasurementNotFoundError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+from app.schemas.quantum import QuantumStartRequest, QuantumMeasurementResponse, GhzStartRequest
+
+from typing import Optional
+
+@router.post("/ghz/start", status_code=status.HTTP_200_OK)
+async def start_ghz_broadcast(
+    request: Optional[GhzStartRequest] = None,
+    participants: int = 4,
+    shots: int = 1024,
+    session_uuid: Optional[str] = None,
+    db: AsyncSession = Depends(get_db)
+) -> dict:
+    """Executes N-qubit GHZ state generation for 1-to-N group quantum communication broadcast.
+
+    Args:
+        request (Optional[GhzStartRequest]): JSON body payload containing participants, shots, and session_uuid.
+        participants (int): Fallback query param for number of entangled nodes.
+        shots (int): Fallback query param for sample count.
+        session_uuid (Optional[str]): Fallback query param for session UUID.
+
+    Returns:
+        dict: GHZ simulation outcomes, statevector counts, fidelity, and OpenQASM circuit.
+    """
+    req_participants = request.participants if request else participants
+    req_shots = request.shots if request else shots
+    req_uuid = request.session_uuid if request and request.session_uuid else session_uuid
+
+    from app.quantum.ghz_engine import GHZEngine
+    engine = GHZEngine()
+    result = engine.execute_ghz_broadcast(participants=req_participants, shots=req_shots)
+    if req_uuid:
+        service = QuantumService(db)
+        try:
+            await service.execute_measurement(session_uuid=req_uuid, shots=req_shots)
+        except Exception as e:
+            from app.core.logging_config import logger
+            logger.warning(f"Could not persist session measurement during GHZ broadcast: {str(e)}")
+    return result
+

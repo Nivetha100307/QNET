@@ -102,12 +102,19 @@ export const QuantumKeyModule: React.FC<QuantumKeyModuleProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <Key className="w-5 h-5 text-cyan-400" />
-              <h2 className="text-xl font-bold text-slate-100">
+              <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2">
                 Module 3: Quantum Key Management
+                {session.protocol === 'GHZ' && (
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 font-mono">
+                    GHZ Group Key
+                  </span>
+                )}
               </h2>
             </div>
             <p className="text-sm text-slate-400 mt-1">
-              E91 Basis Reconciliation, Key Sifting & Raw Shared Secret Generation
+              {session.protocol === 'GHZ'
+                ? `GHZ Multipartite Group Key Generation & Sifting (${session.source_node} ➔ ${session.destination_node})`
+                : `E91 Basis Reconciliation, Key Sifting & Raw Shared Secret Generation (${session.source_node} ➔ ${session.destination_node})`}
             </p>
           </div>
 
@@ -122,7 +129,7 @@ export const QuantumKeyModule: React.FC<QuantumKeyModuleProps> = ({
             >
               {sessionHistory.map((s) => (
                 <option key={s.session_id} value={s.session_id}>
-                  Session #{s.id} ({s.source_node} → {s.destination_node}) - [{s.status}]
+                  Session #{s.id} ({s.source_node} ➔ {s.destination_node.includes(',') ? `${s.destination_node.split(',').length} Substations` : s.destination_node}) [{s.protocol}] - [{s.status}]
                 </option>
               ))}
             </select>

@@ -35,6 +35,7 @@ By unifying **Ekert91 (E91) Quantum Entanglement Physics** with a **20-Stage Zer
 | **HKDF-SHA256** | Key Expansion | HMAC-based Extract-and-Expand Key Derivation Function expanding a 256-bit raw quantum key into subkeys (AES key, IV, HMAC key). |
 | **AES-256-GCM** | Authenticated Cipher | Galois/Counter Mode cipher providing confidentiality + integrity using 96-bit nonces and 128-bit authentication tags. |
 | **BSM** | Bell State Measurement | Quantum measurement performed at repeater nodes to execute **Entanglement Swapping** over multi-hop optical fiber networks. |
+| **GHZ Protocol** | Greenberger-Horne-Zeilinger | Multipartite entanglement protocol $\|\text{GHZ}_N\rangle = \frac{1}{\sqrt{2}}(|00\dots0\rangle + |11\dots1\rangle)$ enabling 1-to-$N$ group quantum communication broadcast from Control Center to multiple substations. |
 | **Cascade & Toeplitz** | Post-Processing | Multi-pass parity block error correction (Cascade) + universal matrix hashing (Toeplitz) for privacy amplification. |
 
 ---
@@ -108,9 +109,12 @@ By unifying **Ekert91 (E91) Quantum Entanglement Physics** with a **20-Stage Zer
   - `Control_Center` $\to$ `Substation_D`: **80 km** (Long-Distance Repeater Required)
 - **Features**: Live node-to-node topology visualization, 60 FPS animated photon pulse waves, ping telemetry, and WebSocket broadcast streaming.
 
-### 🔹 Module 2: E91 Quantum Communication Engine
-- **Function**: Simulates physical entangled photon pair generation $|\Phi^+\rangle = \frac{1}{\sqrt{2}}(|00\rangle + |11\rangle)$ using IBM Qiskit AerSimulator.
-- **Basis Angles**:
+### 🔹 Module 2: Quantum Communication Engine (E91 Pairwise & GHZ Broadcast)
+- **Function**: Dual-mode quantum state generator running on IBM Qiskit AerSimulator.
+- **Operating Modes**:
+  - ⚛️ **Pairwise E91 Mode**: Simulates 2-qubit EPR Bell pair entanglement $|\Phi^+\rangle = \frac{1}{\sqrt{2}}(|00\rangle + |11\rangle)$ for point-to-point QKD sessions between Control Center and individual substations.
+  - 🌐 **GHZ Broadcast Mode**: Simulates $N$-qubit Greenberger-Horne-Zeilinger (GHZ) multipartite entanglement $|\text{GHZ}_N\rangle = \frac{1}{\sqrt{2}}(|00\dots0\rangle + |11\dots1\rangle)$ to establish group quantum keys across Control Center and multiple substations simultaneously.
+- **Basis Angles (E91)**:
   - Alice Basis: $a_1 = 0^\circ$, $a_2 = 45^\circ$, $a_3 = 90^\circ$
   - Bob Basis: $b_1 = 22.5^\circ$, $b_2 = -22.5^\circ$, $b_3 = 67.5^\circ$
 
@@ -175,6 +179,191 @@ Every SCADA control command packet passes through 20 sequential verification gat
 ➔ [13. HMAC-SHA256 Match] ➔ [14. Telemetry Range] ➔ [15. Command Whitelist] ➔ [16. RTU State Sync]
 ➔ [17. Trust Score Weighting] ➔ [18. Anomaly Detector] ➔ [19. Audit Vault Commit] ➔ [20. SCADA Execution]
 ```
+
+---
+
+## 🖥️ Interactive Dashboard & Web UI Tab-by-Tab Feature Guide
+
+The QNetSecure frontend is built with **React 18**, **TypeScript**, and **TailwindCSS**, utilizing a sleek slate dark theme, glassmorphic containers, live WebSocket streaming, and interactive telemetry widgets.
+
+Below is an exhaustive tab-by-tab guide detailing the layout, interactive features, visualization components, controls, and real-time workflows available across all **9 Dashboard Tabs**:
+
+---
+
+### 1️⃣ Module 1: Session Init & Network Topology Manager (`module1`)
+> **Sidebar Badge**: `Core` | **Primary Purpose**: Session State Control & SCADA Node Topology Visualization
+
+- **Session Initialization Control Form**:
+  - **Source Node & Destination Node Dropdowns**: Interactive selection between `Control_Center` and substations (`Substation_A`, `Substation_B`, `Substation_C`, `Substation_D`).
+  - **Protocol & Session Type**: Enforces `E91` protocol with support for `SIMULATION` or `HARDWARE` execution modes.
+  - **Start & Initialize Button**: Triggers `POST /api/v1/session/start` to register a new quantum session UUID in memory and local SQLite storage.
+- **Active Session Overview Card**:
+  - **Session UUID & Status Badge**: Highlights active state (`CREATED` ➔ `READY` ➔ `ACTIVE` ➔ `TERMINATED`).
+  - **Session Action Controls**:
+    - ⚡ **Activate Session**: Promotes initialized session to `ACTIVE` status.
+    - ⏹️ **Terminate Session**: Gracefully closes quantum channels, invalidating active key material.
+    - 🚨 **Terminate All Sessions**: Emergency global kill-switch halting all active SCADA quantum channels across all nodes simultaneously.
+  - **Session Counters**: Real-time counters displaying total SCADA messages dispatched and aggregate bytes transferred.
+- **Interactive Node Communication Topology Visualizer**:
+  - **SVG Grid Map**: Renders physical layout connecting Control Center to Substations A through D.
+  - **Animated Optical Pulse Waves**: 60 FPS animated SVG photon pulses travelling along fiber paths.
+  - **Node Hover Telemetry**: Displays distance in kilometers (15 km to 80 km), optical attenuation (dB/km), link health, and single-click node pair selection.
+- **Substation Optical Node Ping Grid**:
+  - **Real-Time Latency Monitors**: Dynamic ping telemetry with natural jitter simulation (1.2 ms to 4.0 ms) across all 5 active nodes.
+  - **Infrastructure Status Indicator**: Pulse lights indicating node operational state (`HEALTHY`, `DEGRADED`, `DISCONNECTED`).
+
+---
+
+### 2️⃣ Module 2: Quantum Engine (E91 Simulation) (`module2`)
+> **Sidebar Badge**: `E91` | **Primary Purpose**: IBM Qiskit Aer Entangled Photon Pair Generation & Measurement
+
+- **Quantum Shot Configuration Bar**:
+  - **Shot Count Selector**: Interactive controls to set measurement sample count ($N = 512, 1024, 2048, 4096$ shots).
+  - **Run Simulation Engine Button**: Executes `POST /api/v1/quantum/start` to run IBM Qiskit AerSimulator Bell pair measurement circuits.
+- **Multi-View Inspection Workspace**:
+  - 📊 **Outcomes Sub-Tab**: Paginated measurement table listing per-photon pair ID, Alice measurement basis angle ($a_1, a_2, a_3$), Bob basis angle ($b_1, b_2, b_3$), measured bit values ($0/1$), basis alignment status (`MATCH` / `DISCARD`), and bit coincidence agreement.
+  - 💻 **OpenQASM Code Sub-Tab**: Displays real-time auto-generated OpenQASM 2.0 / 3.0 quantum assembly code used to program the Qiskit quantum circuit, complete with syntax highlighting and one-click copy button.
+  - ⚛️ **Quantum Circuit Visualizer Sub-Tab**: Graphical circuit diagram visualizing Hadamard ($H$) gates, Controlled-NOT ($CNOT$) entanglement gates, and $R_y(\theta)$ basis rotation gates.
+- **Basis Alignment & Match Analytics**:
+  - **Coincidence Statistics Cards**: Real-time calculation of total photon pairs, matching basis percentage (~$50\%$), and bit coincidence agreement counts.
+
+---
+
+### 3️⃣ Module 3: Key Management & Sifting (`module3`)
+> **Sidebar Badge**: `QKD` | **Primary Purpose**: Public Basis Reconciliation, Key Sifting & Secret Key Extraction
+
+- **Quantum Key Generation Action Panel**:
+  - **Generate Key Button**: Triggers `POST /api/v1/key/generate` executing public basis reconciliation (sifting) over measurement data.
+- **256-Bit Raw Shared Key Inspector**:
+  - **Formatted Hexadecimal & Binary Display**: Displays the derived 256-bit raw quantum encryption key with single-click copy-to-clipboard functionality.
+  - **Fingerprint Hash**: Visual SHA-256 key fingerprint verifying identical key extraction at both Alice and Bob ends.
+- **Key Sifting Efficiency Metrics**:
+  - **Raw Bits vs Sifted Bits Counter**: Displays input raw quantum bits ($1,024$) vs retained sifted key length ($256$ bits).
+  - **Sifting Yield Percentage**: Visual progress bar showing sifting efficiency (~$50.0\%$).
+  - **Shannon Entropy Gauge**: Validates key randomness ($1.000$ bits/symbol).
+- **Interactive Key Inspection Views**:
+  - 🔑 **Shared Key View**: Clean, formatted secret key output.
+  - 🔍 **Basis Comparison Matrix**: Detailed side-by-side table comparing Alice's basis vs Bob's basis for every photon shot, color-coding matched basis indices in emerald green and discarded indices in dark slate.
+  - 📍 **Sifted Index List**: Array map of exact photon indices retained for key assembly.
+- **Key Export Options**: Download secret key metadata in JSON or raw binary key format.
+
+---
+
+### 4️⃣ Module 4: Security Monitor & CHSH/QBER Dashboard (`module4`)
+> **Sidebar Badge**: `CHSH` | **Primary Purpose**: Physical Quantum Channel Integrity Assessment & Entanglement Testing
+
+- **Channel Physical Verification Banner**:
+  - **Overall Security Status**: Large dynamic badge displaying `QUANTUM CHANNEL VERIFIED` (Green), `CHANNEL DEGRADED` (Yellow), or `EAVESDROPPER DETECTED` (Red).
+- **CHSH Bell Inequality Test Card**:
+  - **Bell Parameter Score Meter**: Displays calculated Bell value $S$ (Ideal $S = 2.8284$). If $|S| \le 2.0$, triggers immediate red alert indicating classical local realism (loss of entanglement or eavesdropping).
+  - **Bell Coincidence Correlators Grid**: Shows individual expectation values $E(a_1,b_1)$, $E(a_1,b_2)$, $E(a_2,b_1)$, $E(a_2,b_2)$ derived from Monte Carlo coincidence counting.
+- **QBER Error Rate Monitor**:
+  - **Quantum Bit Error Rate Meter**: Gauge displaying current QBER $\%$. Highlights the strict E91 security threshold at $\mathbf{11.0\%}$.
+- **Entanglement State Fidelity Meter**:
+  - **Fidelity Score ($F$)**: Displays quantum state purity percentage ($0.5 \le F \le 1.0$) calculated directly from physical channel visibility $\gamma$.
+- **Composite Security Score Ring**:
+  - **Weighted Security Rating**: Dynamic circular progress ring evaluating overall channel security using formula:
+    $$\text{Score} = 40\% \cdot \text{CHSH} + 35\% \cdot \text{QBER} + 25\% \cdot \text{Fidelity}$$
+- **Real-Time Interactive Channel Telemetry Graph**:
+  - **Dual-Axis Line Chart**: Live chart plotting QBER $\%$ and Bell parameter $S$ over time via WebSocket updates, rendering threshold marker lines for immediate visual alert on channel degradation.
+
+---
+
+### 5️⃣ Module 5: SCADA Encryption & Digital Twin Engine (`module5`)
+> **Sidebar Badge**: `AES-GCM` | **Primary Purpose**: Authenticated SCADA Control Command Encryption & RTU Telemetry
+
+- **SCADA Command Console**:
+  - **Quick Command Presets**: One-click action buttons to send grid control commands:
+    - ⚡ `TRIP_RELAY`: Emergency circuit breaker trip signal.
+    - 🔒 `CLOSE_BREAKER`: Grid re-closure command.
+    - ⚡ `ADJUST_TRANSFORMER`: Tap changer voltage adjustment.
+    - 🔄 `SYNC_GRID`: Phase synchronization pulse.
+  - **Custom JSON Command Payload Editor**: Custom input for specialized SCADA RTU control vectors.
+- **Cryptographic Engine Visualizer**:
+  - **HKDF-SHA256 Key Expansion Block**: Shows salt `QNetSecure_SCADA_Salt` expanding 256-bit quantum key into separate AES cipher key, IV, and HMAC key.
+  - **AES-256-GCM Authenticated Encryption Pipeline**: Step-by-step display of 96-bit Nonce generation, Ciphertext byte assembly, and 128-bit Authentication Tag generation.
+  - **HMAC-SHA256 Signature Card**: Generates constant-time HMAC-SHA256 signature for payload verification.
+- **Substation RTU Digital Twin Grid**:
+  - **Live Telemetry Gauges**: Real-time grid parameters:
+    - **Voltage**: $230.4\text{ V} \pm 0.8\text{ V}$
+    - **Current**: $14.2\text{ A} \pm 0.3\text{ A}$
+    - **Frequency**: $60.02\text{ Hz} \pm 0.01\text{ Hz}$
+    - **Breaker Status**: `CLOSED` (Green) / `OPEN` (Red)
+- **Command Dispatch Log & Zero-Trust Redirect**:
+  - **Payload Hex Viewer**: Displays encrypted payload bytes, nonce, and auth tag.
+  - 🛡️ **Inspect in Zero-Trust SOC Button**: Direct shortcut passing dispatched payload directly into Module 6 for 20-stage security verification.
+
+---
+
+### 6️⃣ Module 6: Zero-Trust SOC & Adversarial Attack Simulator (`module6`)
+> **Sidebar Badge**: `20-Stage` | **Primary Purpose**: Real-Time 20-Stage Packet Verification & Adversarial Threat Simulation
+
+- **Adversarial Threat Simulation Control Center**:
+  - ⚡ **Active Classical Attack Presets**:
+    - `MITM Tamper`: Modifies encrypted payload bytes in transit (Caught by Stage 11 & 12 Auth Tag Match).
+    - `Replay Attack`: Resends previously executed sequence packet (Caught by Stage 7 & 8 Anti-Replay Check).
+    - `Bit Flip`: Alters ciphertext bit mask (Caught by Stage 5 & 11 Cryptographic Check).
+    - `DoS Flood`: Floods port with high-frequency invalid traffic (Caught by Stage 17 & 18 Trust Rating).
+  - 👁️ **Passive Quantum Attack Presets**:
+    - `Beam Splitting (Optical Fiber Tapping)`: Taps 20% photon power. Classical firewalls are 100% blind (Classical packet bytes modified = 0%), but Quantum Mechanics causes state collapse ($\text{QBER} = 18.5\% \ge 11.0\%$, $S = 1.72 \le 2.0$), halting execution at Stage 9.
+    - `Photon Number Splitting (PNS)`: Intercepts multi-photon pulses, collapsing entanglement fidelity to $68.5\%$.
+- **Live 20-Stage Sequential Packet Verification Stepper**:
+  - **Animated Node-to-Stage Motion**: Visual packet icon traveling sequentially through all 20 Zero-Trust gates with color-coded node statuses (Emerald Green = Pass, Rose Red = Halt & Reject).
+- **Dynamic Trust Score Degradation Gauge**:
+  - **Animated Trust Ring (0-100)**: Displays packet credibility score. Drops dynamically from $98.5$ to $<40.0$ when an attack is detected.
+- **Decision Engine Rationale Inspector**:
+  - **Rule-by-Rule Decision Box**: Provides exact human-readable text explaining why a packet was marked `ALLOW` or `BLOCK` (e.g., *"REJECTED: Stage 12 Authentication Tag mismatch indicates payload tampering in transit"*).
+- **Expandable Packet Inspection Drawer**:
+  - Deep-dive inspector displaying full packet metadata, headers, ciphertext hex, HMAC tags, and stage-by-stage latency timings.
+
+---
+
+### 7️⃣ Module 7: Quantum Repeaters & Entanglement Swapping (`module7`)
+> **Sidebar Badge**: `BSM` | **Primary Purpose**: Multi-Hop Optical Fiber Routing & Entanglement Swapping via Bell State Measurements
+
+- **Multi-Hop Substation Network Distance Map**:
+  - Visual topology representing optical fiber distance degradation across substations (15 km, 30 km, 50 km, 80 km).
+  - **Degradation Indicator**: Highlights severe signal loss and entanglement decay over distances $>40\text{ km}$.
+- **Bell State Measurement (BSM) Control Panel**:
+  - **Execute BSM Button**: Triggers `POST /api/v1/swapping/execute` performing joint Bell State Measurement at intermediate repeater nodes to swap quantum entanglement across hops.
+- **Interactive "Restore via Module 7" Action Trigger**:
+  - One-click recovery control allowing operators to bypass degraded or tapped optical links, restoring Bell parameter score from $S = 1.84 \to 2.63$ and dropping QBER from $18.2\% \to 3.5\%$.
+- **Before / After Quantum Telemetry Comparison Table**:
+  - Side-by-side comparative table showing metric recovery across raw distance, single-hop QBER, swapped QBER, CHSH parameter $S$, and state fidelity $F$.
+
+---
+
+### 8️⃣ Module 8: Cascade Privacy Amplification & AI Analytics (`module8`)
+> **Sidebar Badge**: `Cascade` | **Primary Purpose**: Post-Processing Error Correction, Privacy Amplification & AI Anomaly Detection
+
+- **Cascade Multi-Pass Parity Error Correction Panel**:
+  - **Multi-Pass Visualizer**: Visual step-by-step progress tracking Cascade error correction passes ($Pass_1, Pass_2, Pass_3, Pass_4$), correcting residual bit errors in sifted quantum keys without leaking secret key entropy.
+- **Toeplitz Universal Hashing Privacy Amplification Module**:
+  - **Matrix Multiplication Visualizer**: Graphical view of Toeplitz matrix hashing compressing sifted key to remove any partial information an eavesdropper might have gained during measurement or error correction.
+- **Isolation Forest AI Threat Detection Engine**:
+  - **AI Anomaly Radar**: Machine learning anomaly detector trained on SCADA telemetry feature vectors and quantum channel metrics.
+  - **Anomaly Indicator Cards**: Plots feature vectors in real time, calculating anomaly probability scores and identifying anomalous SCADA control signals.
+- **AI Analytics Summary Metrics**:
+  - Displays Model Precision, Recall, Contamination Ratio ($0.05$), and Threat Classification Confidence.
+
+---
+
+### 9️⃣ Module 9: System Audit Vault & Telemetry Stream (`module9`)
+> **Sidebar Badge**: `Supabase` | **Primary Purpose**: Central Immutable Security Audit Logging & Multi-Database Synchronization
+
+- **Comprehensive Security Audit Event Table**:
+  - **Live Audit Feed**: Displays all security events, Zero-Trust pipeline decisions, QKD session events, and attack alerts.
+  - **Multi-Column Data Fields**: Event ID, Timestamp, Session UUID, Module Origin, Severity Level, Target Node, and Event Description.
+- **Interactive Event Filtering Controls**:
+  - **Severity Filter**: Filter logs by `INFO`, `WARNING`, `CRITICAL`, or `SUCCESS`.
+  - **Search Bar**: Instant text search across session UUIDs, node names, and error rationale strings.
+- **Event Severity Breakdown Bar**:
+  - **Visual Distribution**: Color-coded progress bar illustrating total count and percentage distribution of system log severities.
+- **Export & Log Management Controls**:
+  - 📥 **Export to CSV / JSON**: Download complete system audit logs for offline compliance reporting.
+  - 🔄 **Refresh Telemetry Vault**: Manual sync button re-fetching latest audit logs from backend storage.
+- **Multi-Database Vault Sync Status**:
+  - **Dual Connection Badges**: Visual indicators confirming real-time synchronization with both local SQLite database (`qnetsecure.db`) and cloud Supabase PostgreSQL instance.
 
 ---
 

@@ -1,13 +1,23 @@
 import React from 'react';
 import { Layers, ArrowRight, Atom, Network, Key, Lock, Target } from 'lucide-react';
+import { SessionResponse } from '../../services/sessionApi';
 
-export const IntegrationBanner: React.FC = () => {
+interface IntegrationBannerProps {
+  session?: SessionResponse;
+}
+
+export const IntegrationBanner: React.FC<IntegrationBannerProps> = ({ session }) => {
   const steps = [
     { label: 'Module 2', title: 'E91 Bell Pairs', icon: Atom, color: 'text-cyan-400', border: 'border-cyan-500/30', bg: 'bg-cyan-500/10' },
     { label: 'Module 7', title: 'Repeaters & BSM Swapping', icon: Network, color: 'text-purple-400', border: 'border-purple-500/40', bg: 'bg-purple-500/20' },
     { label: 'Quantum Layer', title: 'End-to-End Entanglement', icon: Lock, color: 'text-emerald-400', border: 'border-emerald-500/30', bg: 'bg-emerald-500/10' },
     { label: 'Module 3', title: '256-Bit Shared Secret Key', icon: Key, color: 'text-amber-400', border: 'border-amber-500/30', bg: 'bg-amber-500/10' },
   ];
+
+  const sourceName = session?.source_node ? session.source_node.replace(/_/g, ' ') : 'Control Center';
+  const destName = session?.destination_node
+    ? session.destination_node.replace(/_/g, ' ')
+    : 'Substations';
 
   return (
     <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl space-y-4">
@@ -25,7 +35,7 @@ export const IntegrationBanner: React.FC = () => {
               <span className="text-xs text-slate-400 font-mono">E91 SCADA Quantum Mesh</span>
             </div>
             <p className="text-xs text-slate-200 mt-1 font-medium">
-              Establish end-to-end entanglement between <span className="text-cyan-300 font-semibold">Control Center</span> &amp; <span className="text-emerald-400 font-semibold">Substation</span> using quantum repeaters &amp; Bell State Measurements.
+              Establish end-to-end entanglement between <span className="text-cyan-300 font-semibold">{sourceName}</span> &amp; <span className="text-emerald-400 font-semibold">{destName}</span> using quantum repeaters &amp; Bell State Measurements.
             </p>
           </div>
         </div>

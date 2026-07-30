@@ -22,23 +22,31 @@ interface NodePosition {
 
 interface NodeCommunicationTopologyProps {
   activeSession: SessionResponse | null;
+  selectedProtocol?: string;
+  selectedSourceNode?: string;
+  selectedDestNodes?: string[];
   onSelectNodePair?: (source: string, dest: string) => void;
 }
 
 export const NodeCommunicationTopology: React.FC<NodeCommunicationTopologyProps> = ({
   activeSession,
+  selectedProtocol,
+  selectedSourceNode,
+  selectedDestNodes,
   onSelectNodePair
 }) => {
-  const [selectedSource, setSelectedSource] = useState<string>(activeSession?.source_node || 'Control_Center');
-  const [selectedDest, setSelectedDest] = useState<string>(activeSession?.destination_node || 'Substation_A');
+  const [selectedSource, setSelectedSource] = useState<string>('Control_Center');
+  const [selectedDest, setSelectedDest] = useState<string>('Substation_A');
   const [progress, setProgress] = useState<number>(0);
 
   useEffect(() => {
     if (activeSession) {
       setSelectedSource(activeSession.source_node);
       setSelectedDest(activeSession.destination_node);
+    } else if (selectedSourceNode) {
+      setSelectedSource(selectedSourceNode);
     }
-  }, [activeSession]);
+  }, [activeSession, selectedSourceNode]);
 
   // Smooth 60FPS animation tick for flying photons
   useEffect(() => {
@@ -61,42 +69,73 @@ export const NodeCommunicationTopology: React.FC<NodeCommunicationTopologyProps>
   ];
 
   const getNode = (id: string) => nodes.find((n) => n.id === id) || nodes[0];
-  const srcNode = getNode(selectedSource);
-  const dstNode = getNode(selectedDest);
+  const srcNode = getNode(selectedSourceNode || activeSession?.source_node || selectedSource);
 
-  const isSessionActive = activeSession?.status === 'ACTIVE';
+  // Extract all target destination node IDs from UI selection or active session
+  const destNodeIds = React.useMemo(() => {
+    if (selectedProtocol === 'GHZ' && selectedDestNodes && selectedDestNodes.length > 0) {
+      return selectedDestNodes;
+    }
+    if (activeSession?.destination_node) {
+      const split = activeSession.destination_node.split(',').map((s) => s.trim()).filter(Boolean);
+      if (split.length > 0) return split;
+    }
+    if (selectedDestNodes && selectedDestNodes.length > 0) {
+      return selectedDestNodes;
+    }
+    return [selectedDest];
+  }, [selectedProtocol, selectedDestNodes, activeSession, selectedDest]);
+
+  const targetNodes = destNodeIds.map(getNode);
+
+  const isSessionActive = activeSession?.status === 'ACTIVE' || activeSession?.status === 'READY';
+  const isGhzProtocol = selectedProtocol === 'GHZ' || activeSession?.protocol === 'GHZ';
 
   const handleNodeClick = (nodeId: string) => {
-    if (nodeId === selectedSource) return;
+    if (nodeId === srcNode.id) return;
     setSelectedDest(nodeId);
     if (onSelectNodePair) {
-      onSelectNodePair(selectedSource, nodeId);
+      onSelectNodePair(srcNode.id, nodeId);
     }
   };
 
-  // Compute quadratic bezier curve for active link
-  const midX = (srcNode.x + dstNode.x) / 2;
-  const arcControlY = 30; // arch upwards
-  const curvePath = `M ${srcNode.x} ${srcNode.y} Q ${midX} ${arcControlY} ${dstNode.x} ${dstNode.y}`;
+  // Helper function to build bezier curve parameters for any source-destination node pair
+  const createLinkCurve = (targetNode: NodePosition) => {
+    const midX = (srcNode.x + targetNode.x) / 2;
+    const arcControlY = 30; // arch upwards
+    const curvePath = `M ${srcNode.x} ${srcNode.y} Q ${midX} ${arcControlY} ${targetNode.x} ${targetNode.y}`;
 
-  // Evaluate point along quadratic bezier B(t) = (1-t)^2 P0 + 2(1-t)t P1 + t^2 P2
-  const getBezierPoint = (t: number) => {
-    const t1 = 1 - t;
-    const x = t1 * t1 * srcNode.x + 2 * t1 * t * midX + t * t * dstNode.x;
-    const y = t1 * t1 * srcNode.y + 2 * t1 * t * arcControlY + t * t * dstNode.y;
-    return { x, y };
+    const getBezierPoint = (t: number) => {
+      const t1 = 1 - t;
+      const x = t1 * t1 * srcNode.x + 2 * t1 * t * midX + t * t * targetNode.x;
+      const y = t1 * t1 * srcNode.y + 2 * t1 * t * arcControlY + t * t * targetNode.y;
+      return { x, y };
+    };
+
+    const p1 = getBezierPoint(progress);
+    const p2 = getBezierPoint((progress + 0.5) % 1.0);
+    const trail1 = getBezierPoint(Math.max(0, progress - 0.04));
+    const trail2 = getBezierPoint(Math.max(0, progress - 0.08));
+
+    const angle = progress * Math.PI * 8;
+    const orbitalOffset1 = { x: Math.cos(angle) * 7, y: Math.sin(angle) * 7 };
+    const orbitalOffset2 = { x: -Math.cos(angle) * 7, y: -Math.sin(angle) * 7 };
+
+    return {
+      targetNode,
+      curvePath,
+      midX,
+      arcControlY,
+      p1,
+      p2,
+      trail1,
+      trail2,
+      orbitalOffset1,
+      orbitalOffset2
+    };
   };
 
-  // Primary flying photon pair positions
-  const p1 = getBezierPoint(progress);
-  const p2 = getBezierPoint((progress + 0.5) % 1.0);
-  const trail1 = getBezierPoint(Math.max(0, progress - 0.04));
-  const trail2 = getBezierPoint(Math.max(0, progress - 0.08));
-
-  // Entangled sub-photon orbital offsets
-  const angle = progress * Math.PI * 8;
-  const orbitalOffset1 = { x: Math.cos(angle) * 7, y: Math.sin(angle) * 7 };
-  const orbitalOffset2 = { x: -Math.cos(angle) * 7, y: -Math.sin(angle) * 7 };
+  const activeLinks = targetNodes.map(createLinkCurve);
 
   return (
     <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 backdrop-blur-md shadow-xl space-y-4">
@@ -109,12 +148,16 @@ export const NodeCommunicationTopology: React.FC<NodeCommunicationTopologyProps>
           <div>
             <h3 className="text-sm font-bold text-slate-100 flex items-center gap-3">
               Real-Time Node-to-Node Quantum Communication Topology
-              <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 font-mono font-bold">
-                E91 Active Optical Mesh
+              <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-mono font-bold border ${
+                isGhzProtocol
+                  ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                  : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+              }`}>
+                {isGhzProtocol ? `GHZ ${destNodeIds.length}-Node Group Broadcast` : 'E91 Active Optical Mesh'}
               </span>
             </h3>
             <p className="text-xs text-slate-400">
-              Visualizing photon entanglement pulses $|\Phi^+\rangle$ flowing between optical nodes
+              Visualizing photon entanglement pulses {isGhzProtocol ? '|GHZ₄⟩' : '|Φ+⟩'} flowing between optical nodes
             </p>
           </div>
         </div>
@@ -123,9 +166,13 @@ export const NodeCommunicationTopology: React.FC<NodeCommunicationTopologyProps>
         <div className="flex items-center space-x-2 font-mono text-xs">
           <span className="text-slate-400 font-sans text-[11px] font-semibold">Active Path:</span>
           <span className="px-2.5 py-1 rounded-xl bg-slate-950 text-cyan-300 border border-cyan-500/40 font-bold flex items-center gap-1.5">
-            <span className="text-emerald-400">{srcNode.shortName}</span>
+            <span className="text-emerald-400 font-bold">{srcNode.shortName}</span>
             <ArrowRightLeft className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-            <span className="text-purple-300">{dstNode.shortName}</span>
+            <span className="text-purple-300 font-bold">
+              {destNodeIds.length === 1
+                ? getNode(destNodeIds[0]).shortName
+                : `${destNodeIds.map(id => getNode(id).shortName.replace('Substation ', '')).join(', ')} (${destNodeIds.length} Nodes)`}
+            </span>
           </span>
         </div>
       </div>
@@ -151,6 +198,12 @@ export const NodeCommunicationTopology: React.FC<NodeCommunicationTopologyProps>
               <stop offset="50%" stopColor="#34d399" />
               <stop offset="100%" stopColor="#c084fc" />
             </linearGradient>
+
+            <linearGradient id="ghzGrad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor="#a855f7" />
+              <stop offset="50%" stopColor="#ec4899" />
+              <stop offset="100%" stopColor="#3b82f6" />
+            </linearGradient>
           </defs>
 
           {/* 1. Base Horizontal Optical Backbone Bus Line */}
@@ -164,59 +217,62 @@ export const NodeCommunicationTopology: React.FC<NodeCommunicationTopologyProps>
             strokeDasharray="6 6"
           />
 
-          {/* 2. Active Quantum Laser Transmission Arc */}
-          <path
-            d={curvePath}
-            fill="none"
-            stroke="url(#arcGrad)"
-            strokeWidth={isSessionActive ? "3.5" : "2.5"}
-            filter="url(#laserGlow)"
-            className="transition-all duration-500"
-          />
+          {/* 2. Active Quantum Laser Transmission Arcs for ALL Target Nodes */}
+          {activeLinks.map((link) => (
+            <g key={`link-${link.targetNode.id}`}>
+              <path
+                d={link.curvePath}
+                fill="none"
+                stroke={isGhzProtocol ? "url(#ghzGrad)" : "url(#arcGrad)"}
+                strokeWidth={isSessionActive ? "3.5" : "2.5"}
+                filter="url(#laserGlow)"
+                className="transition-all duration-500"
+              />
 
-          {/* Secondary Parallel Dashed Classical Line */}
-          <path
-            d={`M ${srcNode.x} ${srcNode.y + 6} Q ${midX} ${arcControlY + 6} ${dstNode.x} ${dstNode.y + 6}`}
-            fill="none"
-            stroke="#10b981"
-            strokeWidth="1.5"
-            strokeDasharray="4 4"
-            opacity="0.6"
-          />
+              {/* Secondary Parallel Dashed Classical Line */}
+              <path
+                d={`M ${srcNode.x} ${srcNode.y + 6} Q ${link.midX} ${link.arcControlY + 6} ${link.targetNode.x} ${link.targetNode.y + 6}`}
+                fill="none"
+                stroke={isGhzProtocol ? "#c084fc" : "#10b981"}
+                strokeWidth="1.5"
+                strokeDasharray="4 4"
+                opacity="0.6"
+              />
 
-          {/* 3. HIGH-QUALITY PHOTON PULSE ANIMATION (|Phi+> Entangled Pair + Comet Trail) */}
-          <g>
-            {/* Comet Trail Particles */}
-            <circle cx={trail2.x} cy={trail2.y} r="2.5" fill="#06b6d4" opacity="0.3" />
-            <circle cx={trail1.x} cy={trail1.y} r="4" fill="#22d3ee" opacity="0.6" />
+              {/* 3. FLYING PHOTON PULSE ANIMATION FOR THIS LINK */}
+              <g>
+                <circle cx={link.trail2.x} cy={link.trail2.y} r="2.5" fill="#06b6d4" opacity="0.3" />
+                <circle cx={link.trail1.x} cy={link.trail1.y} r="4" fill="#22d3ee" opacity="0.6" />
 
-            {/* Primary Entangled Photon Core 1 */}
-            <circle cx={p1.x} cy={p1.y} r="7" fill="#22d3ee" filter="url(#photonGlow)" />
-            <circle cx={p1.x} cy={p1.y} r="3" fill="#ffffff" />
+                {/* Primary Entangled Photon Core 1 */}
+                <circle cx={link.p1.x} cy={link.p1.y} r="7" fill={isGhzProtocol ? "#c084fc" : "#22d3ee"} filter="url(#photonGlow)" />
+                <circle cx={link.p1.x} cy={link.p1.y} r="3" fill="#ffffff" />
 
-            {/* Entangled Orbiting Sub-Photons (Spinning Quantum State) */}
-            <circle cx={p1.x + orbitalOffset1.x} cy={p1.y + orbitalOffset1.y} r="2.5" fill="#67e8f9" />
-            <circle cx={p1.x + orbitalOffset2.x} cy={p1.y + orbitalOffset2.y} r="2.5" fill="#a855f7" />
+                {/* Entangled Orbiting Sub-Photons */}
+                <circle cx={link.p1.x + link.orbitalOffset1.x} cy={link.p1.y + link.orbitalOffset1.y} r="2.5" fill="#67e8f9" />
+                <circle cx={link.p1.x + link.orbitalOffset2.x} cy={link.p1.y + link.orbitalOffset2.y} r="2.5" fill="#a855f7" />
 
-            {/* Primary Entangled Photon Core 2 */}
-            <circle cx={p2.x} cy={p2.y} r="6" fill="#c084fc" filter="url(#photonGlow)" />
-            <circle cx={p2.x} cy={p2.y} r="2.5" fill="#ffffff" />
+                {/* Primary Entangled Photon Core 2 */}
+                <circle cx={link.p2.x} cy={link.p2.y} r="6" fill="#f472b6" filter="url(#photonGlow)" />
+                <circle cx={link.p2.x} cy={link.p2.y} r="2.5" fill="#ffffff" />
 
-            {/* SCADA Encrypted Packet Badge moving along path */}
-            {isSessionActive && (
-              <g transform={`translate(${p1.x}, ${p1.y - 14})`}>
-                <rect x="-14" y="-8" width="28" height="14" rx="4" fill="#022c22" stroke="#10b981" strokeWidth="1" />
-                <text x="0" y="2" fill="#34d399" fontSize="7" fontFamily="monospace" fontWeight="bold" textAnchor="middle">
-                  E91
-                </text>
+                {/* Protocol Badge moving along path */}
+                {isSessionActive && (
+                  <g transform={`translate(${link.p1.x}, ${link.p1.y - 14})`}>
+                    <rect x="-16" y="-8" width="32" height="14" rx="4" fill="#1e1b4b" stroke="#818cf8" strokeWidth="1" />
+                    <text x="0" y="2" fill="#c7d2fe" fontSize="7" fontFamily="monospace" fontWeight="bold" textAnchor="middle">
+                      {isGhzProtocol ? "GHZ" : "E91"}
+                    </text>
+                  </g>
+                )}
               </g>
-            )}
-          </g>
+            </g>
+          ))}
 
           {/* 4. Draw Nodes along the Horizontal Axis */}
           {nodes.map((node) => {
             const isSource = node.id === selectedSource;
-            const isDest = node.id === selectedDest;
+            const isDest = destNodeIds.includes(node.id);
             const isControl = node.type === 'CONTROL';
 
             return (

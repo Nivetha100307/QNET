@@ -37,3 +37,11 @@ class BasisResponse(BaseModel):
     session_uuid: str
     alice_basis: List[str]
     bob_basis: List[str]
+
+
+class GhzStartRequest(BaseModel):
+    """Request schema for starting Module 2 GHZ Quantum Broadcast Engine."""
+    participants: int = Field(default=4, ge=2, le=8, description="Number of entangled participant nodes")
+    shots: int = Field(default=1024, ge=100, le=10000, description="Number of measurement shots")
+    session_uuid: Optional[str] = Field(default=None, description="UUID string of active session")
+

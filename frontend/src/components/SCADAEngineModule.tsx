@@ -31,6 +31,8 @@ import { ThreatPanel } from './scada/ThreatPanel';
 import { SCADATransportTimeline, TransportTimelineStep } from './scada/SCADATransportTimeline';
 import { SCADAAuditPanel } from './scada/SCADAAuditPanel';
 
+import { SCADA_CATALOG, SCADACategoryDefinition } from '../data/scadaCatalog';
+
 interface SCADAEngineModuleProps {
   session: SessionResponse;
   sessionHistory: SessionResponse[];
@@ -64,13 +66,51 @@ export const SCADAEngineModule: React.FC<SCADAEngineModuleProps> = ({
   onQuickCreateSession,
   onNavigateToModule6
 }) => {
-  const devices = ['RELAY_04', 'BRK_12', 'TRANS_TAP_01', 'GEN_MAIN_01'];
   const roles = ['GRID_ADMIN', 'CONTROL_OPERATOR', 'SUBSTATION_ENGINEER', 'FIELD_ENGINEER', 'VIEWER'];
-  const commands = ['TRIP_RELAY', 'OPEN_BREAKER', 'CLOSE_BREAKER', 'SET_TRANSFORMER_TAP', 'EMERGENCY_SHUTDOWN'];
 
-  const [selectedDevice, setSelectedDevice] = useState<string>('RELAY_04');
-  const [selectedRole, setSelectedRole] = useState<string>('GRID_ADMIN');
-  const [selectedCommand, setSelectedCommand] = useState<string>('TRIP_RELAY');
+  const targetNodes = React.useMemo(() => {
+    if (session.destination_node && session.destination_node.includes(',')) {
+      return session.destination_node.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+    return [session.destination_node || 'Substation_A'];
+  }, [session.destination_node]);
+
+  const [activeSubstationTab, setActiveSubstationTab] = useState<string>(targetNodes[0] || 'Substation_A');
+
+  // Multi-substation configuration state mapping
+  const [substationConfigs, setSubstationConfigs] = useState<Record<string, { categoryId: string; device: string; command: string }>>({
+    'Substation_A': { categoryId: 'breaker', device: 'Intelligent Electronic Breaker (IEC 61850)', command: 'TRIP_BREAKER' },
+    'Substation_B': { categoryId: 'transformer', device: 'Step-Down Transformer', command: 'SET_TAP_POSITION' },
+    'Substation_C': { categoryId: 'relay', device: 'Numerical Relay', command: 'UPDATE_RELAY_SETTINGS' },
+    'Substation_D': { categoryId: 'controller', device: 'Grid Control Center', command: 'EMERGENCY_SHUTDOWN' },
+  });
+
+  const [selectedRoleId, setSelectedRoleId] = useState<string>('GRID_ADMIN');
+  const [singleCategory, setSingleCategory] = useState<string>('breaker');
+  const [singleDevice, setSingleDevice] = useState<string>('Intelligent Electronic Breaker (IEC 61850)');
+  const [singleCommand, setSingleCommand] = useState<string>('TRIP_BREAKER');
+
+  const updateSubstationCategory = (node: string, catId: string) => {
+    const cat = SCADA_CATALOG.find((c) => c.id === catId) || SCADA_CATALOG[0];
+    setSubstationConfigs((prev) => ({
+      ...prev,
+      [node]: {
+        categoryId: catId,
+        device: cat.devices[0],
+        command: cat.commands[0]
+      }
+    }));
+  };
+
+  const updateSubstationField = (node: string, field: 'device' | 'command', val: string) => {
+    setSubstationConfigs((prev) => ({
+      ...prev,
+      [node]: {
+        ...prev[node] || { categoryId: 'breaker', device: 'Intelligent Electronic Breaker (IEC 61850)', command: 'TRIP_BREAKER' },
+        [field]: val
+      }
+    }));
+  };
 
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -140,7 +180,7 @@ export const SCADAEngineModule: React.FC<SCADAEngineModuleProps> = ({
     // 1. Animate 12 Command Chain Steps
     for (let c = 0; c < 12; c++) {
       setCommandStepIndex(c);
-      await new Promise((resolve) => setTimeout(resolve, 60));
+      await new Promise((resolve) => setTimeout(resolve, 40));
     }
 
     // 2. Animate 15 Security Layers
@@ -150,7 +190,7 @@ export const SCADAEngineModule: React.FC<SCADAEngineModuleProps> = ({
         prev.map((l, idx) => (idx === i ? { ...l, status: 'RUNNING' } : l))
       );
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 60));
 
       setLayers((prev) =>
         prev.map((l, idx) => (idx === i ? { ...l, status: 'PASSED' } : l))
@@ -158,32 +198,44 @@ export const SCADAEngineModule: React.FC<SCADAEngineModuleProps> = ({
     }
 
     try {
-      const res = await sendSCADACommand({
-        session_uuid: session.session_id,
-        source_node: session.source_node,
-        destination_node: session.destination_node,
-        command: `${selectedCommand}_${selectedDevice}`,
-        parameters: { role: selectedRole, device: selectedDevice }
-      });
+      const dispatchedPackets: SCADAPacketResponse[] = [];
+      for (const targetNode of targetNodes) {
+        const cfg = substationConfigs[targetNode] || {
+          categoryId: singleCategory,
+          device: singleDevice,
+          command: singleCommand
+        };
+        const res = await sendSCADACommand({
+          session_uuid: session.session_id,
+          source_node: session.source_node,
+          destination_node: targetNode,
+          command: `${cfg.command}_[${cfg.device}]`,
+          parameters: { role: selectedRoleId, device: cfg.device, target_node: targetNode, category: cfg.categoryId }
+        });
+        dispatchedPackets.push(res);
+      }
 
-      setLatestPacket(res);
-      setHistory((prev) => [res, ...prev]);
+      if (dispatchedPackets.length > 0) {
+        setLatestPacket(dispatchedPackets[0]);
+        setHistory((prev) => [...dispatchedPackets, ...prev]);
+      }
       setAckReceived(true);
 
       // Update Digital Twin Telemetry
+      const activeCmd = (substationConfigs[activeSubstationTab] || {}).command || singleCommand;
       setTelemetry((prev) => ({
         ...prev,
         voltage: 230.0 + Math.random() * 2.0,
         current: 14.0 + Math.random() * 1.5,
-        breakerState: selectedCommand.includes('OPEN') ? 'OPEN' : 'CLOSED',
-        relayState: selectedCommand.includes('TRIP') ? 'TRIPPED' : 'ENERGIZED'
+        breakerState: activeCmd.includes('OPEN') ? 'OPEN' : 'CLOSED',
+        relayState: activeCmd.includes('TRIP') ? 'TRIPPED' : 'ENERGIZED'
       }));
 
       setTimelineSteps((prev) => [
         ...prev,
         {
           timestamp: new Date().toLocaleTimeString(),
-          label: `ACK ${res.command}`,
+          label: `Group ACK (${dispatchedPackets.length} Nodes)`,
           latencyMs: 24
         }
       ]);
@@ -195,54 +247,51 @@ export const SCADAEngineModule: React.FC<SCADAEngineModuleProps> = ({
     }
   };
 
+  const activeSubConfig = substationConfigs[activeSubstationTab] || {
+    categoryId: 'breaker',
+    device: 'Intelligent Electronic Breaker (IEC 61850)',
+    command: 'TRIP_BREAKER'
+  };
+
+  const activeSubCategoryDef = SCADA_CATALOG.find((c) => c.id === activeSubConfig.categoryId) || SCADA_CATALOG[0];
+
+  const singleCategoryDef = SCADA_CATALOG.find((c) => c.id === singleCategory) || SCADA_CATALOG[0];
+
   return (
     <div className="space-y-6">
       {/* Feature 12: Top System Status Ribbon */}
       <SCADASystemRibbon
         sessionStatus={session.status}
         keyValid={true}
-        targetDevice={selectedDevice}
+        targetDevice={targetNodes.length > 1 ? activeSubConfig.device : singleDevice}
         latencyMs={18}
       />
-
-      {/* Feature 1: End-to-End Command Chain */}
-      <SCADACommandChain currentStepIndex={commandStepIndex} />
 
       {/* Main SOC Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Command Console & Motion */}
         <div className="lg:col-span-4 space-y-6">
-          <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 space-y-4">
-            <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
-              <Radio className="w-5 h-5 text-cyan-400" />
-              <h3 className="text-sm font-bold text-slate-100 font-sans">
-                SCADA Command Execution Console
-              </h3>
+          <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <Radio className="w-5 h-5 text-cyan-400" />
+                <h3 className="text-sm font-bold text-slate-100 font-sans">
+                  SCADA Command Console
+                </h3>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-800 font-bold">
+                {targetNodes.length > 1 ? 'GHZ Multi-Node Mode' : 'Single Link'}
+              </span>
             </div>
 
             <div className="space-y-3 font-mono text-xs">
               <div>
                 <label className="block text-slate-400 font-sans font-semibold mb-1">
-                  Target Device
+                  Operator Authorization Role
                 </label>
                 <select
-                  value={selectedDevice}
-                  onChange={(e) => setSelectedDevice(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
-                >
-                  {devices.map((d) => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-slate-400 font-sans font-semibold mb-1">
-                  Operator Role
-                </label>
-                <select
-                  value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value)}
+                  value={selectedRoleId}
+                  onChange={(e) => setSelectedRoleId(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
                 >
                   {roles.map((r) => (
@@ -251,36 +300,163 @@ export const SCADAEngineModule: React.FC<SCADAEngineModuleProps> = ({
                 </select>
               </div>
 
-              <div>
-                <label className="block text-slate-400 font-sans font-semibold mb-1">
-                  SCADA Command
-                </label>
-                <select
-                  value={selectedCommand}
-                  onChange={(e) => setSelectedCommand(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
-                >
-                  {commands.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
+              {/* Per-Substation Command Configurator Tabs */}
+              {targetNodes.length > 1 ? (
+                <div className="space-y-3 border-t border-slate-800/80 pt-3">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-slate-300 font-sans font-semibold text-[11px]">
+                      Configure Substation Commands:
+                    </label>
+                    <span className="text-[9px] text-cyan-400 font-sans font-bold">14 SCADA Categories</span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                    {targetNodes.map((node) => (
+                      <button
+                        key={node}
+                        onClick={() => setActiveSubstationTab(node)}
+                        className={`px-2.5 py-1 text-[10px] font-bold rounded-md transition ${
+                          activeSubstationTab === node
+                            ? 'bg-purple-600 text-white shadow'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                        }`}
+                      >
+                        {node.replace('Substation_', 'Sub ')}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Substation Specific Dynamic Form */}
+                  <div className="p-3.5 bg-slate-950/90 border border-slate-800 rounded-xl space-y-3 shadow-inner">
+                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-200">
+                      <span>Target Node: <span className="text-cyan-400 font-mono">{activeSubstationTab}</span></span>
+                      <span className="text-[9px] text-purple-400 bg-purple-950 px-2 py-0.5 rounded border border-purple-800 font-mono">
+                        AES Key Active
+                      </span>
+                    </div>
+
+                    {/* Category Selector */}
+                    <div>
+                      <label className="block text-slate-400 font-sans text-[10px] font-semibold mb-1">
+                        1. SCADA Device Category
+                      </label>
+                      <select
+                        value={activeSubConfig.categoryId}
+                        onChange={(e) => updateSubstationCategory(activeSubstationTab, e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-slate-100 focus:outline-none focus:border-purple-500 font-sans font-semibold"
+                      >
+                        {SCADA_CATALOG.map((cat) => (
+                          <option key={cat.id} value={cat.id}>{cat.categoryName}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Target Device Selector */}
+                    <div>
+                      <label className="block text-slate-400 font-sans text-[10px] font-semibold mb-1">
+                        2. Target Device Type
+                      </label>
+                      <select
+                        value={activeSubConfig.device}
+                        onChange={(e) => updateSubstationField(activeSubstationTab, 'device', e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-cyan-300 focus:outline-none focus:border-purple-500 font-mono"
+                      >
+                        {activeSubCategoryDef.devices.map((d) => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Supported Command Selector */}
+                    <div>
+                      <label className="block text-slate-400 font-sans text-[10px] font-semibold mb-1">
+                        3. Supported SCADA Command
+                      </label>
+                      <select
+                        value={activeSubConfig.command}
+                        onChange={(e) => updateSubstationField(activeSubstationTab, 'command', e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs text-purple-300 focus:outline-none focus:border-purple-500 font-mono font-bold"
+                      >
+                        {activeSubCategoryDef.commands.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3 pt-2">
+                  {/* Single Category Selector */}
+                  <div>
+                    <label className="block text-slate-400 font-sans font-semibold mb-1">
+                      1. SCADA Device Category
+                    </label>
+                    <select
+                      value={singleCategory}
+                      onChange={(e) => {
+                        const catId = e.target.value;
+                        const cat = SCADA_CATALOG.find((c) => c.id === catId) || SCADA_CATALOG[0];
+                        setSingleCategory(catId);
+                        setSingleDevice(cat.devices[0]);
+                        setSingleCommand(cat.commands[0]);
+                      }}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 font-sans font-semibold"
+                    >
+                      {SCADA_CATALOG.map((cat) => (
+                        <option key={cat.id} value={cat.id}>{cat.categoryName}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Single Device Selector */}
+                  <div>
+                    <label className="block text-slate-400 font-sans font-semibold mb-1">
+                      2. Target Device Type
+                    </label>
+                    <select
+                      value={singleDevice}
+                      onChange={(e) => setSingleDevice(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-cyan-300 focus:outline-none focus:border-cyan-500 font-mono"
+                    >
+                      {singleCategoryDef.devices.map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Single Command Selector */}
+                  <div>
+                    <label className="block text-slate-400 font-sans font-semibold mb-1">
+                      3. Supported SCADA Command
+                    </label>
+                    <select
+                      value={singleCommand}
+                      onChange={(e) => setSingleCommand(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-xs text-purple-300 focus:outline-none focus:border-cyan-500 font-mono font-bold"
+                    >
+                      {singleCategoryDef.commands.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
 
               {/* Execution Button */}
               <button
                 onClick={handleExecute}
                 disabled={loading}
-                className="w-full py-3.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-cyan-950/50 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+                className="w-full py-3.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white rounded-xl font-bold text-xs shadow-lg shadow-purple-950/50 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
               >
                 {loading ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    Executing 15-Layer SCADA Pipeline...
+                    Dispatching SCADA Commands...
                   </>
                 ) : (
                   <>
                     <ShieldCheck className="w-4 h-4" />
-                    Submit & Execute SCADA Command
+                    {targetNodes.length > 1 ? `Submit & Execute GHZ Group SCADA Dispatch (${targetNodes.length} Nodes)` : 'Submit & Execute SCADA Command'}
                   </>
                 )}
               </button>
@@ -291,7 +467,7 @@ export const SCADAEngineModule: React.FC<SCADAEngineModuleProps> = ({
                   onClick={onNavigateToModule6}
                   className="w-full py-2.5 bg-slate-950 hover:bg-slate-800 text-cyan-400 border border-slate-800 rounded-xl font-bold text-xs font-sans flex items-center justify-center gap-2 transition-all"
                 >
-                  <span>Verify Packet in Module 6 Zero-Trust</span>
+                  <span>Verify Packets in Module 6 Zero-Trust</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               )}
@@ -304,13 +480,13 @@ export const SCADAEngineModule: React.FC<SCADAEngineModuleProps> = ({
             ackReceived={ackReceived}
             sourceNode={session.source_node}
             destinationNode={session.destination_node}
-            command={selectedCommand}
+            command={targetNodes.length > 1 ? activeSubConfig.command : singleCommand}
             onForwardToZeroTrust={onNavigateToModule6}
           />
 
           {/* Substation RTU Digital Twin */}
           <DeviceDigitalTwin
-            device={selectedDevice}
+            device={targetNodes.length > 1 ? activeSubConfig.device : singleDevice}
             voltage={telemetry.voltage}
             current={telemetry.current}
             frequency={telemetry.frequency}

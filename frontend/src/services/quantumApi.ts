@@ -44,3 +44,30 @@ export async function fetchQuantumCircuit(
 ): Promise<QuantumCircuitResponse> {
   return apiRequest<QuantumCircuitResponse>(`/quantum/circuit/${session_uuid}`);
 }
+
+export interface GhzBroadcastResponse {
+  type: string;
+  participants: number;
+  shots: number;
+  counts: Record<string, number>;
+  fidelity: number;
+  mermin_score: number;
+  execution_backend: string;
+  simulation_time_ms: number;
+  circuit_qasm: string | null;
+  circuit_diagram: string | null;
+  status: string;
+}
+
+export async function startGhzBroadcast(
+  participants: number = 4,
+  shots: number = 1024,
+  session_uuid?: string
+): Promise<GhzBroadcastResponse> {
+  const query = session_uuid ? `?session_uuid=${encodeURIComponent(session_uuid)}` : '';
+  return apiRequest<GhzBroadcastResponse>(`/quantum/ghz/start${query}`, {
+    method: 'POST',
+    body: JSON.stringify({ participants, shots }),
+  });
+}
+

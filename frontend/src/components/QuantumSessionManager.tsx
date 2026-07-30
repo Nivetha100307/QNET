@@ -70,6 +70,12 @@ export const QuantumSessionManager: React.FC = () => {
   const [sourceNode, setSourceNode] = useState<string>('Control_Center');
   const [destNode, setDestNode] = useState<string>('Substation_A');
   const [protocol, setProtocol] = useState<string>('E91');
+  const [ghzSelectedNodes, setGhzSelectedNodes] = useState<string[]>([
+    'Substation_A',
+    'Substation_B',
+    'Substation_C',
+    'Substation_D'
+  ]);
   const [sessionType, setSessionType] = useState<string>('SIMULATION');
 
   const [activeSession, setActiveSession] = useState<SessionResponse | null>(null);
@@ -166,7 +172,11 @@ export const QuantumSessionManager: React.FC = () => {
 
   const handleInitialize = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (sourceNode === destNode) {
+    const finalDestNode = protocol === 'GHZ'
+      ? (ghzSelectedNodes.length > 0 ? ghzSelectedNodes.join(', ') : 'Substation_A, Substation_B, Substation_C, Substation_D')
+      : destNode;
+
+    if (sourceNode === finalDestNode && protocol !== 'GHZ') {
       setErrorMsg('Destination node cannot be equal to source node.');
       return;
     }
@@ -176,7 +186,7 @@ export const QuantumSessionManager: React.FC = () => {
     try {
       const newSession = await createSession({
         source_node: sourceNode,
-        destination_node: destNode,
+        destination_node: finalDestNode,
         protocol: protocol,
         session_type: sessionType,
       });
@@ -188,7 +198,7 @@ export const QuantumSessionManager: React.FC = () => {
       if (msg.includes('404') || msg.toLowerCase().includes('not found')) {
         setErrorMsg('Backend endpoint unavailable. Please ensure Uvicorn backend server is running.');
       } else {
-        setErrorMsg(msg || 'Failed to initialize session');
+        setErrorMsg(msg || 'Failed to initialize quantum session');
       }
     } finally {
       setLoading(false);
@@ -201,14 +211,14 @@ export const QuantumSessionManager: React.FC = () => {
     setSuccessMsg(null);
     try {
       const created = await createSession({
-        source_node: 'Substation_A',
-        destination_node: 'Control_Center',
-        protocol: 'E91',
+        source_node: 'Control_Center',
+        destination_node: 'Substation_A, Substation_B, Substation_C, Substation_D',
+        protocol: 'GHZ',
         session_type: 'SIMULATION',
       });
       const activated = await activateSession(created.session_id);
       setActiveSession(activated);
-      setSuccessMsg(`Active session ${activated.session_id.substring(0, 8)} created.`);
+      setSuccessMsg(`Active GHZ Broadcast session ${activated.session_id.substring(0, 8)} created.`);
       await loadSessions();
     } catch (err: any) {
       const msg = err.message || '';
@@ -353,6 +363,20 @@ export const QuantumSessionManager: React.FC = () => {
                 <form onSubmit={handleInitialize} className="space-y-4">
                   <div>
                     <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
+                      Quantum Protocol Mode
+                    </label>
+                    <select
+                      value={protocol}
+                      onChange={(e) => setProtocol(e.target.value)}
+                      className="w-full bg-slate-950 border border-cyan-500/40 rounded-xl p-3 text-sm text-cyan-300 font-semibold focus:outline-none focus:border-cyan-400"
+                    >
+                      <option value="E91">⚛️ E91 (Pairwise 1 ➔ 1 QKD)</option>
+                      <option value="GHZ">🌐 GHZ (Multipartite 1 ➔ N Group Broadcast)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
                       Source Node
                     </label>
                     <select
@@ -366,55 +390,98 @@ export const QuantumSessionManager: React.FC = () => {
                     </select>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
-                      Destination Node
-                    </label>
-                    <select
-                      value={destNode}
-                      onChange={(e) => setDestNode(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
-                    >
-                      {NODES.map((node) => (
-                        <option key={`dst-${node}`} value={node}>{node}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
+                  {protocol === 'E91' ? (
                     <div>
                       <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
-                        Protocol
-                      </label>
-                      <input
-                        type="text"
-                        readOnly
-                        value={protocol}
-                        className="w-full bg-slate-950/50 border border-slate-800 rounded-xl p-3 text-sm font-mono text-cyan-400 cursor-not-allowed"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
-                        Type
+                        Destination Node (Pairwise Target)
                       </label>
                       <select
-                        value={sessionType}
-                        onChange={(e) => setSessionType(e.target.value)}
+                        value={destNode}
+                        onChange={(e) => setDestNode(e.target.value)}
                         className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
                       >
-                        <option value="SIMULATION">SIMULATION</option>
-                        <option value="HARDWARE">HARDWARE</option>
+                        {NODES.filter((n) => n !== sourceNode).map((node) => (
+                          <option key={`dst-${node}`} value={node}>{node}</option>
+                        ))}
                       </select>
                     </div>
+                  ) : (
+                    <div className="space-y-3 bg-slate-950/80 p-3.5 rounded-xl border border-purple-500/30">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-bold text-purple-300 uppercase tracking-wider">
+                          Select Target Nodes (GHZ Group Broadcast)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const targets = NODES.filter((n) => n !== 'Control_Center');
+                            setGhzSelectedNodes(ghzSelectedNodes.length === targets.length ? ['Substation_A'] : targets);
+                          }}
+                          className="text-[10px] text-cyan-400 hover:text-cyan-300 font-mono underline"
+                        >
+                          {ghzSelectedNodes.length === 4 ? 'Deselect All' : 'Select All (4 Nodes)'}
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {NODES.filter((n) => n !== 'Control_Center').map((sub) => {
+                          const isSelected = ghzSelectedNodes.includes(sub);
+                          return (
+                            <label
+                              key={`ghz-${sub}`}
+                              className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition ${
+                                isSelected
+                                  ? 'bg-purple-950/60 border-purple-500/50 text-purple-200'
+                                  : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setGhzSelectedNodes([...ghzSelectedNodes, sub]);
+                                  } else {
+                                    setGhzSelectedNodes(ghzSelectedNodes.filter((n) => n !== sub));
+                                  }
+                                }}
+                                className="accent-purple-500"
+                              />
+                              <span className="font-mono text-[11px]">{sub.replace('_', ' ')}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                      <div className="text-[10px] text-purple-300/80 font-mono">
+                        {ghzSelectedNodes.length} Substation Nodes Entangled Simultaneously
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-2">
+                      Execution Mode
+                    </label>
+                    <select
+                      value={sessionType}
+                      onChange={(e) => setSessionType(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value="SIMULATION">SIMULATION</option>
+                      <option value="HARDWARE">HARDWARE</option>
+                    </select>
                   </div>
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-3.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2"
+                    className={`w-full py-3.5 font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-white ${
+                      protocol === 'GHZ'
+                        ? 'bg-gradient-to-r from-purple-600 via-pink-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-purple-950/50'
+                        : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 shadow-cyan-950/50'
+                    }`}
                   >
                     {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                    Start &amp; Initialize Session
+                    <span>{protocol === 'GHZ' ? 'Start GHZ Group Broadcast Session' : 'Start & Initialize E91 Session'}</span>
                   </button>
                 </form>
               </div>
@@ -478,8 +545,12 @@ export const QuantumSessionManager: React.FC = () => {
                       <span className="text-cyan-300 font-bold">{activeSession.source_node}</span>
                     </div>
                     <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
-                      <span className="text-slate-500 block text-[10px]">DESTINATION NODE</span>
-                      <span className="text-emerald-300 font-bold">{activeSession.destination_node}</span>
+                      <span className="text-slate-500 block text-[10px]">
+                        {activeSession.protocol === 'GHZ' || activeSession.destination_node.includes(',') ? 'TARGET NODES (BROADCAST)' : 'DESTINATION NODE'}
+                      </span>
+                      <span className="text-emerald-300 font-bold truncate block" title={activeSession.destination_node}>
+                        {activeSession.destination_node}
+                      </span>
                     </div>
                     <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">
                       <span className="text-slate-500 block text-[10px]">MESSAGES DISPATCHED</span>
@@ -506,6 +577,9 @@ export const QuantumSessionManager: React.FC = () => {
           {/* INTERACTIVE NODE-TO-NODE QUANTUM COMMUNICATION TOPOLOGY */}
           <NodeCommunicationTopology
             activeSession={activeSession}
+            selectedProtocol={protocol}
+            selectedSourceNode={sourceNode}
+            selectedDestNodes={protocol === 'GHZ' ? ghzSelectedNodes : [destNode]}
             onSelectNodePair={(src, dst) => {
               setSourceNode(src);
               setDestNode(dst);
@@ -593,6 +667,7 @@ export const QuantumSessionManager: React.FC = () => {
           sessionHistory={sessionHistory}
           onSelectSession={setActiveSession}
           onQuickCreateSession={handleQuickCreateSession}
+          onNavigateToModule7={() => handleTabChange('module7')}
         />
       )}
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { RefreshCw, Cpu } from 'lucide-react';
 import { EventBus } from '../core/EventBus';
 import { wsService } from '../core/websocket';
+import { HybridPqcBadge } from '../components/common/HybridPqcBadge';
 
 interface TopbarProps {
   activeTab: string;
@@ -51,6 +52,8 @@ export const Topbar: React.FC<TopbarProps> = ({ activeTab, onRefresh }) => {
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Real-Time Hybrid Quantum-PQC Mode Indicator Badge */}
+        <HybridPqcBadge />
         {onRefresh && (
           <button
             onClick={onRefresh}

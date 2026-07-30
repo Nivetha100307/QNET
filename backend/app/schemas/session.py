@@ -52,14 +52,14 @@ class TimelineEvent(BaseModel):
 
 class SessionCreateRequest(BaseModel):
     """Request schema for creating a secure quantum session."""
-    source_node: NodeName = Field(..., description="Origin SCADA node")
-    destination_node: NodeName = Field(..., description="Target SCADA node")
-    protocol: ProtocolType = Field(default=ProtocolType.E91, description="Quantum protocol")
+    source_node: str = Field(..., description="Origin SCADA node")
+    destination_node: str = Field(..., description="Target SCADA node or comma-separated nodes for GHZ broadcast")
+    protocol: str = Field(default="E91", description="Quantum protocol (E91 or GHZ)")
     session_type: SessionType = Field(default=SessionType.SIMULATION, description="Session type")
 
     @field_validator("destination_node")
     @classmethod
-    def validate_nodes_not_equal(cls, v: NodeName, info: Any) -> NodeName:
+    def validate_nodes_not_equal(cls, v: str, info: Any) -> str:
         if "source_node" in info.data and v == info.data["source_node"]:
             raise ValueError("Destination node cannot be equal to source node.")
         return v

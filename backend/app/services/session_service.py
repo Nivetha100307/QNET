@@ -212,6 +212,34 @@ class SessionService:
 
         return updated_session
 
+    async def terminate_all_sessions(self) -> List[QuantumSession]:
+        """Terminates ALL active, ready, or initializing sessions in the system."""
+        all_sessions = await self.repository.find_all()
+        terminated_list = []
+        for session in all_sessions:
+            if session.status != SessionStatus.TERMINATED.value:
+                # Stop telemetry simulation loop if active
+                telemetry_simulator.stop_session_telemetry(session.session_id)
+
+                session.status = SessionStatus.TERMINATED.value
+                session.ended_at = utc_now()
+                session.updated_at = utc_now()
+
+                timeline_list = list(session.timeline) if session.timeline else []
+                timeline_list.append(self._create_timeline_event(WSEventType.SESSION_TERMINATED.value, SessionStatus.TERMINATED.value, "Global session termination executed"))
+                session.timeline = timeline_list
+
+                updated_session = await self.repository.update(session)
+                terminated_list.append(updated_session)
+
+                await ws_manager.broadcast(WSEventType.SESSION_TERMINATED.value, {
+                    "session_id": session.session_id,
+                    "status": session.status
+                })
+
+        logger.info(f"Global termination executed: {len(terminated_list)} active sessions terminated.")
+        return terminated_list
+
     async def get_session(self, session_id: str) -> QuantumSession:
         """Retrieves a session by UUID."""
         session = await self.repository.find_by_session_id(session_id)

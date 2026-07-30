@@ -97,6 +97,10 @@ class ZeroTrustService:
 
         if attack_type == "EAVESDROPPING":
             details = "Eve intercept-resend attack detected via QBER spike (>11.0%) and CHSH violation."
+        elif attack_type == "FIBER_TAPPING" or attack_type == "BEAM_SPLITTING":
+            details = "PASSIVE ATTACK DETECTED: Passive optical fiber beam splitting bleeds photon state energy. Classical firewalls are 100% blind (0% payload change), but Quantum Mechanics forces photon state collapse (QBER = 18.5%, S = 1.72 <= 2.0)."
+        elif attack_type == "PHOTON_NUMBER_SPLITTING" or attack_type == "PNS":
+            details = "PASSIVE ATTACK DETECTED: Passive Photon Number Splitting (PNS) eavesdropping detected. No classical payload modification occurred, but quantum entanglement state fidelity dropped to 68.5% (S = 1.64 <= 2.0)."
         elif attack_type == "MAN_IN_THE_MIDDLE":
             details = "MITM packet modification intercepted by HMAC-SHA256 authentication tag mismatch."
         elif attack_type == "REPLAY_ATTACK":

@@ -70,6 +70,12 @@ export async function endSession(session_id: string): Promise<SessionResponse> {
   });
 }
 
+export async function endAllSessions(): Promise<SessionResponse[]> {
+  return apiRequest<SessionResponse[]>('/session/end_all', {
+    method: 'POST',
+  });
+}
+
 export async function fetchSessions(): Promise<SessionResponse[]> {
   return apiRequest<SessionResponse[]>('/session/list');
 }

@@ -90,6 +90,18 @@ async def end_session(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to end session: {str(e)}")
 
 
+@router.post("/end_all", response_model=List[SessionResponse])
+async def end_all_sessions(
+    service: SessionService = Depends(get_session_service)
+) -> List[SessionResponse]:
+    """Terminates ALL active, ready, or initializing quantum communication sessions globally."""
+    try:
+        terminated_sessions = await service.terminate_all_sessions()
+        return [SessionResponse.model_validate(s) for s in terminated_sessions]
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to terminate all sessions: {str(e)}")
+
+
 @router.get("/list", response_model=List[SessionResponse])
 async def list_sessions(
     service: SessionService = Depends(get_session_service)

@@ -137,12 +137,15 @@ By unifying **Ekert91 (E91) Quantum Entanglement Physics** with a **20-Stage Zer
 
 ### 🔹 Module 6: Zero-Trust SOC & Adversarial Attack Simulator
 - **Function**: Real-time 20-Stage Zero-Trust Verification Pipeline & Adversarial Threat Simulation.
-- **Adversarial Attack Presets**:
-  - `MITM Tamper`: Intercepts ciphertext and modifies payload bytes.
-  - `Replay Attack`: Intercepts valid sequence number #104 and retransmits it.
-  - `Eve Eavesdrop`: Taps optical fiber, raising QBER to 27.6% and dropping CHSH to 1.65.
-  - `Bit Flip Attack`: Flips encryption bit mask in transmission.
-  - `DoS Flood`: Floods SCADA RTU port with 1,000 invalid requests per second.
+- **Adversarial Attack Presets (Active & Passive)**:
+  - ⚡ **Active Attacks** (Classical Layer Detection):
+    - `MITM Tamper`: Intercepts ciphertext and modifies payload bytes (Caught by Stage 11 Integrity Check & HMAC Tag Match).
+    - `Replay Attack`: Intercepts valid sequence number #104 and retransmits it (Caught by Stage 7 Monotonic Counter & Stage 15 Replay Cache).
+    - `Bit Flip Attack`: Flips encryption bit mask in transmission (Caught by Stage 8 Schema Validation).
+    - `DoS Flood`: Floods SCADA RTU port with 1,000 invalid requests per second (Caught by Stage 18 Trust Evaluation).
+  - 👁️ **Passive Attacks** (Quantum Layer Detection — *Classical Firewalls Are 100% Blind*):
+    - `Passive Fiber Tapping (Beam Splitting)`: Passive optical splitter taps 20% of photon light power. Classical payload is **0% modified** (Classical IDSs report healthy traffic), but Quantum Mechanics causes photon state collapse ($\text{QBER} = 18.5\% \ge 11.0\%$, $S = 1.72 \le 2.0$), halting execution at Stage 9.
+    - `Passive Photon Number Splitting (PNS Attack)`: Passive interception of multi-photon pulse states without packet alteration. Quantum state entanglement collapses, dropping Fidelity to $68.5\%$ ($S = 1.64 \le 2.0$).
 - **Features**: Live 20-stage sequential packet motion animation, dynamic Trust Score (0–100) degradation ring, decision tree rationales (`ALLOW` vs `BLOCK`), expandable packet inspector, and filterable audit logs.
 
 ### 🔹 Module 7: Quantum Repeaters & Entanglement Swapping

@@ -122,6 +122,12 @@ export const ZeroTrustAttackModule: React.FC<ZeroTrustAttackModuleProps> = ({
     } else if (attackPreset === 'EAVESDROPPING') {
       failedStageNum = 9; // Stage 9: Protocol Version / QBER Check
       targetDecision = 'BLOCK';
+    } else if (attackPreset === 'FIBER_TAPPING') {
+      failedStageNum = 9; // Stage 9: Passive Optical Beam Splitting -> QBER Spike & CHSH Violation
+      targetDecision = 'BLOCK';
+    } else if (attackPreset === 'PNS_ATTACK') {
+      failedStageNum = 9; // Stage 9: Passive Photon Number Splitting -> Fidelity Collapse
+      targetDecision = 'BLOCK';
     }
 
     // Step-by-step 20-stage sequential animation loop (180ms per stage)
@@ -242,11 +248,13 @@ export const ZeroTrustAttackModule: React.FC<ZeroTrustAttackModuleProps> = ({
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { id: 'MITM', name: 'MITM Tamper (Stage 11)' },
-                  { id: 'REPLAY', name: 'Replay Attack (Stage 7)' },
-                  { id: 'EAVESDROPPING', name: 'Eve Eavesdrop (Stage 9)' },
-                  { id: 'PACKET_TAMPERING', name: 'Bit Flip (Stage 8)' },
-                  { id: 'DENIAL_OF_SERVICE', name: 'DoS Flood (Stage 18)' },
+                  { id: 'MITM', name: '⚡ MITM Tamper (Stage 11)' },
+                  { id: 'REPLAY', name: '⚡ Replay Attack (Stage 7)' },
+                  { id: 'EAVESDROPPING', name: '👁️ Eve Intercept (Stage 9)' },
+                  { id: 'FIBER_TAPPING', name: '👁️ Passive Fiber Tap (Stage 9)' },
+                  { id: 'PNS_ATTACK', name: '👁️ Passive PNS Attack (Stage 9)' },
+                  { id: 'PACKET_TAMPERING', name: '⚡ Bit Flip (Stage 8)' },
+                  { id: 'DENIAL_OF_SERVICE', name: '⚡ DoS Flood (Stage 18)' },
                 ].map((a) => (
                   <button
                     key={a.id}

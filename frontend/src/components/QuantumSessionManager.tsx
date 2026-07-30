@@ -25,6 +25,7 @@ import {
   createSession,
   activateSession,
   endSession,
+  endAllSessions,
   fetchSessions,
   SessionResponse,
   wsService,
@@ -250,6 +251,7 @@ export const QuantumSessionManager: React.FC = () => {
       const updated = await endSession(activeSession.session_id);
       setActiveSession(updated);
       setSuccessMsg(`Session ${updated.session_id.substring(0, 8)} terminated.`);
+      EventBus.emit('REFRESH_ALL_DATA', {});
       await loadSessions();
     } catch (err: any) {
       const msg = err.message || '';
@@ -263,11 +265,47 @@ export const QuantumSessionManager: React.FC = () => {
     }
   };
 
+  const handleTerminateAllSessions = async () => {
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const terminated = await endAllSessions();
+      setSuccessMsg(`All ${terminated.length} SCADA quantum sessions terminated successfully.`);
+      if (activeSession) {
+        setActiveSession({ ...activeSession, status: 'TERMINATED' });
+      }
+      EventBus.emit('REFRESH_ALL_DATA', {});
+      await loadSessions();
+    } catch (err: any) {
+      const msg = err.message || '';
+      if (msg.includes('404') || msg.toLowerCase().includes('not found')) {
+        setErrorMsg('Backend endpoint unavailable. Please ensure Uvicorn backend server is running.');
+      } else {
+        setErrorMsg(msg || 'Failed to terminate all sessions');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGlobalRefresh = async () => {
+    setLoading(true);
+    try {
+      await loadSessions();
+      EventBus.emit('REFRESH_ALL_DATA', {});
+      setSuccessMsg('Refreshed all system telemetry, session status, and audit logs.');
+    } catch (err) {
+      setErrorMsg('Failed to refresh system data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <MainLayout
       activeTab={activeModuleTab}
       onTabChange={handleTabChange}
-      onRefresh={loadSessions}
+      onRefresh={handleGlobalRefresh}
     >
       {/* Notifications */}
       {errorMsg && (
@@ -398,7 +436,7 @@ export const QuantumSessionManager: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {activeSession.status === 'READY' && (
                         <button
                           onClick={handleActivate}
@@ -412,13 +450,27 @@ export const QuantumSessionManager: React.FC = () => {
                         <button
                           onClick={handleTerminate}
                           disabled={loading}
-                          className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl shadow-lg transition flex items-center gap-1.5"
+                          className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl shadow-lg transition flex items-center gap-1.5"
                         >
                           <Square className="w-3.5 h-3.5" /> Terminate Session
                         </button>
                       )}
+                      <button
+                        onClick={handleTerminateAllSessions}
+                        disabled={loading}
+                        className="px-3.5 py-2 bg-gradient-to-r from-rose-700 to-red-800 hover:from-rose-600 hover:to-red-700 text-white text-xs font-bold rounded-xl shadow-lg transition flex items-center gap-1.5 border border-rose-500/40"
+                      >
+                        <ShieldAlert className="w-3.5 h-3.5" /> Terminate All Sessions
+                      </button>
                     </div>
                   </div>
+
+                  {activeSession.status === 'TERMINATED' && (
+                    <div className="p-3 bg-rose-950/60 border border-rose-500/60 rounded-xl text-rose-300 text-xs font-mono flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                      <span>SESSION TERMINATED: Quantum channel closed. All key distribution and SCADA command dispatch halted.</span>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono text-xs">
                     <div className="bg-slate-950 p-3 rounded-xl border border-slate-800">

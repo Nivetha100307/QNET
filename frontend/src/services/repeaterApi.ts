@@ -113,3 +113,61 @@ export async function fetchRepeaterMetrics(
     `/repeater/metrics?distance_km=${distance_km}&noise_enabled=${noise_enabled}`
   );
 }
+
+export interface QuarcCluster {
+  id: string;
+  name: string;
+  nodes: string[];
+  leader: string;
+  health: number;
+  avg_fidelity: number;
+  avg_qber: number;
+  avg_memory_ms: number;
+  avg_swap_success: number;
+}
+
+export interface QuarcSwapTask {
+  task_id: string;
+  repeater: string;
+  memory_slot: number;
+  left_neighbor: string;
+  right_neighbor: string;
+  success_probability: number;
+  priority: number;
+  status: string;
+}
+
+export interface QuarcStatusPayload {
+  engine: string;
+  timestamp: string;
+  network_health: number;
+  clusters: QuarcCluster[];
+  cluster_route: string[];
+  local_route: string[];
+  swap_schedule: QuarcSwapTask[];
+  overall_score: number;
+  metrics: {
+    overall_health: number;
+    network_efficiency: number;
+    route_confidence: number;
+    average_fidelity: number;
+    average_memory_ms: number;
+    congestion_index: number;
+    active_clusters_count: number;
+    total_links_monitored: number;
+  };
+}
+
+export async function fetchQuarcStatus(
+  source: string = "Control_Center",
+  destination: string = "Substation_A"
+): Promise<QuarcStatusPayload> {
+  return apiRequest<QuarcStatusPayload>(`/module7/quarc/status?source_node=${source}&destination_node=${destination}`);
+}
+
+export async function triggerQuarcRecluster(): Promise<any> {
+  return apiRequest<any>('/module7/quarc/recluster', {
+    method: 'POST'
+  });
+}
+

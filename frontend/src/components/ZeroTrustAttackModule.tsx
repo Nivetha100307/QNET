@@ -27,6 +27,7 @@ import { PacketInspector } from './soc/PacketInspector';
 import { PipelineSummaryCard } from './soc/PipelineSummaryCard';
 import { SecurityTimeline, TimelineEventItem } from './soc/SecurityTimeline';
 import { AuditTable, AuditLogEntry } from './soc/AuditTable';
+import { CryptoAgilityPanel } from './soc/CryptoAgilityPanel';
 
 interface ZeroTrustAttackModuleProps {
   session: SessionResponse;
@@ -368,6 +369,9 @@ export const ZeroTrustAttackModule: React.FC<ZeroTrustAttackModuleProps> = ({
           </span>
         </div>
       </div>
+
+      {/* Self-Healing Quantum-Safe Crypto-Agility Engine Panel */}
+      <CryptoAgilityPanel attackType={attackPreset} isSimulating={isSimulating} />
 
       {/* Main SOC Dashboard Layout Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
